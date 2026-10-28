@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>YTM Glow Bridge</title>
+    <style>
+      :root { color-scheme: light dark; font: 13px/1.4 system-ui, -apple-system, sans-serif; }
+      body { margin: 0; padding: 14px 16px; width: 260px; }
+      h1 { font-size: 14px; margin: 0 0 10px; }
+      .row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+      .dot { width: 9px; height: 9px; border-radius: 50%; background: #999; flex: none; }
+      .dot.ok { background: #2fbf71; }
+      .dot.wait { background: #f0a020; }
+      .muted { opacity: 0.7; font-size: 12px; }
+      details { margin-top: 10px; }
+      input { width: 80px; }
+    </style>
+  </head>
+  <body>
+    <h1>YTM Glow Bridge</h1>
+    <div class="row"><span id="dot" class="dot"></span><span id="status">Checking…</span></div>
+    <div class="row muted" id="detail"></div>
+    <details>
+      <summary class="muted">Advanced</summary>
+      <div class="row">
+        <label for="port">App port</label>
+        <input id="port" type="number" min="1024" max="65535" />
+        <button id="save">Save</button>
+      </div>
+      <div class="muted">Connects only to 127.0.0.1. The app listens on 47816 by default.</div>
+    </details>
+    <script src="lib/core.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
