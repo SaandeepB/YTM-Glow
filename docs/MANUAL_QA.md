@@ -57,7 +57,9 @@ log stream --level info --predicate 'subsystem == "io.github.saandeepb.ytmglow"'
 ## 5. Sleep / wake and lock
 
 - [ ] Close the lid (or Apple menu → Sleep) while music plays. Wake: the app is still running, the extension reconnects, and glow and lyrics resume when music plays.
-- [ ] Lock the screen (⌃⌘Q) while music plays: overlays are not shown on the lock screen in this version (that's Phase 2, experimental). Unlock: overlays are back.
+- [ ] With **Show on lock screen** off (the default): lock the screen (⌃⌘Q) while music plays. Overlays are not shown on the lock screen. Unlock: overlays are back.
+- [ ] With **Show on lock screen** on: follow the step-by-step checklist in [LOCK_SCREEN.md](LOCK_SCREEN.md#what-you-must-test-by-hand).
+- [ ] **Keep display awake while playing** on: the display doesn't sleep while music plays (`pmset -g assertions` lists "YTM Glow: music is playing"); after pausing it sleeps normally.
 - [ ] Leave the Mac idle with nothing playing for 10 minutes: Activity Monitor shows YTM Glow at ~0% CPU.
 
 ## 6. Settings and performance
