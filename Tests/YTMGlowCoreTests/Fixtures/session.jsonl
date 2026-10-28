@@ -1,0 +1,7 @@
+// Recorded shape of a real extension session (values edited for determinism).
+{"type":"hello","v":1,"client":"ytm-glow-extension","version":"0.1.0","browser":"Google Chrome 141"}
+{"type":"state","source":"tab-17","reason":"track","track":{"title":"Glass Lanterns (Official Audio)","artist":"The Paper Moths","album":"Night Market","videoId":"abc123XYZ00","artwork":[{"src":"https://lh3.googleusercontent.com/fake-art=w60-h60-l90-rj","sizes":"60x60","type":"image/jpeg"},{"src":"https://lh3.googleusercontent.com/fake-art=w544-h544-l90-rj","sizes":"544x544","type":"image/jpeg"}]},"playback":{"position":9.5,"duration":200.2,"paused":false,"rate":1,"ended":false},"tap":"active","ad":false}
+{"type":"levels","source":"tab-17","bass":0.82,"mid":0.41,"high":0.12}
+{"type":"levels","source":"tab-17","bass":0.35,"mid":0.30,"high":0.10}
+{"type":"state","source":"tab-17","reason":"tick","track":{"title":"Glass Lanterns (Official Audio)","artist":"The Paper Moths","album":"Night Market","videoId":"abc123XYZ00","artwork":[{"src":"https://lh3.googleusercontent.com/fake-art=w60-h60-l90-rj","sizes":"60x60","type":"image/jpeg"},{"src":"https://lh3.googleusercontent.com/fake-art=w544-h544-l90-rj","sizes":"544x544","type":"image/jpeg"}]},"playback":{"position":10.0,"duration":200.2,"paused":false,"rate":1,"ended":false},"tap":"active","ad":false}
+{"type":"ping"}
