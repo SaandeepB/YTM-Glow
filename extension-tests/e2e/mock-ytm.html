@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Mock YouTube Music</title>
+  </head>
+  <body>
+    <!-- Imitates the parts of music.youtube.com the extension reads:
+         navigator.mediaSession.metadata and a <video> streaming from a blob: URL. -->
+    <div id="movie_player">
+      <video id="player"></video>
+    </div>
+    <button id="play">Play</button>
+    <script>
+      // 30 s of synthetic music: a 55 Hz kick every 0.5 s (120 BPM) over a quiet pad.
+      function makeWav(seconds, sampleRate) {
+        const count = Math.floor(seconds * sampleRate);
+        const buffer = new ArrayBuffer(44 + count * 2);
+        const view = new DataView(buffer);
+        const writeString = (offset, text) => { for (let i = 0; i < text.length; i++) view.setUint8(offset + i, text.charCodeAt(i)); };
+        writeString(0, 'RIFF'); view.setUint32(4, 36 + count * 2, true); writeString(8, 'WAVE');
+        writeString(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+        view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+        writeString(36, 'data'); view.setUint32(40, count * 2, true);
+        for (let i = 0; i < count; i++) {
+          const t = i / sampleRate;
+          const beat = t % 0.5;
+          const kick = Math.sin(2 * Math.PI * 55 * t) * Math.exp(-beat * 9);
+          const pad = 0.12 * Math.sin(2 * Math.PI * 330 * t) + 0.05 * Math.sin(2 * Math.PI * 3300 * t);
+          view.setInt16(44 + i * 2, Math.max(-1, Math.min(1, 0.8 * kick + pad)) * 32767, true);
+        }
+        return new Blob([buffer], { type: 'audio/wav' });
+      }
+
+      // Query parameters let the demo script pose as a real song (metadata only).
+      const params = new URLSearchParams(location.search);
+      const art = params.get('art');
+      const player = document.getElementById('player');
+      player.src = URL.createObjectURL(makeWav(Number(params.get('duration')) || 30, 22050));
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: params.get('title') || 'Glass Lanterns',
+        artist: params.get('artist') || 'The Paper Moths',
+        album: params.get('album') ?? 'Night Market',
+        artwork: art
+          ? [{ src: art, sizes: '480x360', type: 'image/jpeg' }]
+          : [
+              { src: 'https://lh3.googleusercontent.com/mock-art=w60-h60', sizes: '60x60', type: 'image/jpeg' },
+              { src: 'https://lh3.googleusercontent.com/mock-art=w544-h544', sizes: '544x544', type: 'image/jpeg' },
+            ],
+      });
+      document.getElementById('play').addEventListener('click', () => player.play());
+      // Like YTM resuming a queue: starts without a user gesture (needs --autoplay-policy).
+      if (new URLSearchParams(location.search).has('autoplay')) player.play();
+      window.mock = {
+        play: () => player.play(),
+        pause: () => player.pause(),
+        seek: (t) => { player.currentTime = t; },
+        info: () => ({ paused: player.paused, muted: player.muted, volume: player.volume, time: player.currentTime }),
+        nextTrack: () => {
+          history.pushState({}, '', '/watch?v=mockvid0002');
+          navigator.mediaSession.metadata = new MediaMetadata({ title: 'Paper Moths', artist: 'The Paper Moths', album: 'Night Market', artwork: [] });
+          player.currentTime = 0;
+        },
+      };
+    </script>
+  </body>
+</html>
