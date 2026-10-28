@@ -1,9 +1,9 @@
 name: CI
 
+# Runs on every branch push (PRs pick up the checks of their head commit),
+# so there's no duplicate pull_request run.
 on:
-  pull_request:
   push:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
