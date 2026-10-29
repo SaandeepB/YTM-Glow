@@ -78,6 +78,7 @@ public final class BridgeServer: @unchecked Sendable {
         queue.async {
             guard self.wantLevels != value else { return }
             self.wantLevels = value
+            Log.bridge.info("Audio levels \(value ? "requested" : "not needed", privacy: .public)")
             self.broadcastOnQueue(.config(wantLevels: value))
         }
     }
