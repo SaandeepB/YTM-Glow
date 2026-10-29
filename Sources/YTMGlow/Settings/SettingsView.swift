@@ -16,6 +16,7 @@ struct SettingsView: View {
             NowPlayingCard(engine: engine)
             GlowSection(settings: settings, engine: engine)
             LyricsSection(settings: settings, engine: engine)
+            KaraokeScreenSection(settings: settings)
             ExperimentalSection(settings: settings, lockScreen: lockScreen)
             GeneralSection(launchAtLogin: launchAtLogin, extensionSetup: extensionSetup, onQuit: onQuit)
         }
@@ -206,6 +207,17 @@ private struct LyricsSection: View {
             .pickerStyle(.segmented)
             .labelsHidden()
 
+            HStack(spacing: 8) {
+                Text("Animation").frame(width: 64, alignment: .leading)
+                Picker("Animation", selection: $settings.lyricsAnimation) {
+                    ForEach(LyricsAnimation.allCases) { Text($0.label).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
+            .font(.caption)
+            .help("Light up: words switch on. Pop: words spring up as they're sung. Karaoke: color sweeps through each word (redraws every frame while playing).")
+
             ColorSourceRow(source: $settings.lyricsColorSource) {
                 HexColorWell(hex: $settings.lyricsCustomColor)
             }
@@ -234,6 +246,39 @@ private struct LyricsSection: View {
         let rounded = (settings.lyricsOffset * 10).rounded() / 10
         if rounded == 0 { return "0.0 s" }
         return String(format: "%+.1f s", rounded)
+    }
+}
+
+private struct KaraokeScreenSection: View {
+    @ObservedObject var settings: AppSettings
+    @State private var displays: [DisplayInfo] = []
+
+    var body: some View {
+        SectionCard(title: "Karaoke screen", systemImage: "tv", isOn: $settings.stageEnabled) {
+            HStack(spacing: 8) {
+                Text("Display").frame(width: 64, alignment: .leading)
+                Picker("Display", selection: $settings.stageDisplayID) {
+                    Text("Automatic (other display)").tag(UInt32(0))
+                    ForEach(displays, id: \.id) { display in
+                        Text(display.isMain ? "\(display.name) (main)" : display.name).tag(display.id)
+                    }
+                }
+                .labelsHidden()
+            }
+            .font(.caption)
+            Text(caption)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .onAppear { displays = StageController.displays() }
+    }
+
+    private var caption: String {
+        if StageDisplayPicker.pick(displays, preferredID: settings.stageDisplayID) == nil {
+            return "Connect a second display, or pick this one, to use the karaoke screen."
+        }
+        return "Full-screen karaoke on that display while music plays. Press Esc or the × to close."
     }
 }
 

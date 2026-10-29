@@ -64,6 +64,24 @@ enum PreviewRenderer {
             if !write(view, size: size, to: outputDirectory.appendingPathComponent("lyrics-\(style.rawValue).png")) { failures += 1 }
         }
 
+        // Beam with each animation mode, caught mid-word.
+        appearance.style = .beam
+        for animation in LyricsAnimation.allCases {
+            appearance.animation = animation
+            let view = LyricsOverlayView(presenter: presenter, appearance: appearance)
+                .environment(\.isRenderingPreview, true)
+                .frame(width: 1100, height: 200)
+                .background(desktop)
+            if !write(view, size: CGSize(width: 1100, height: 200), to: outputDirectory.appendingPathComponent("animation-\(animation.rawValue).png")) { failures += 1 }
+        }
+
+        // The karaoke screen at 1080p.
+        let stageModel = StageModel()
+        stageModel.pulse = 0.6
+        let stage = StageView(presenter: presenter, engine: engine, appearance: appearance, stage: stageModel, onClose: {})
+            .frame(width: 1920, height: 1080)
+        if !write(stage, size: CGSize(width: 1920, height: 1080), to: outputDirectory.appendingPathComponent("karaoke-screen.png")) { failures += 1 }
+
         // The glow, drawn by the real GlowView over a stand-in desktop.
         let glowSize = CGSize(width: 1100, height: 620)
         let glow = GlowView(screenSize: glowSize, stripRect: CGRect(origin: .zero, size: glowSize))
@@ -97,7 +115,7 @@ enum PreviewRenderer {
         window.appearance = NSAppearance(named: .darkAqua)
         window.contentView = hosting
         hosting.layoutSubtreeIfNeeded()
-        RunLoop.main.run(until: Date().addingTimeInterval(0.3))
+        RunLoop.main.run(until: Date().addingTimeInterval(1.0))
         guard let rep = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) else { return false }
         hosting.cacheDisplay(in: hosting.bounds, to: rep)
         guard let image = rep.cgImage,
