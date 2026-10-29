@@ -6,6 +6,7 @@ struct SettingsView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var engine: PlayerEngine
     @ObservedObject var lockScreen: LockScreenController
+    @ObservedObject var launchAtLogin: LaunchAtLogin
     var extensionSetup: ExtensionSetup
     var onQuit: () -> Void
 
@@ -16,7 +17,7 @@ struct SettingsView: View {
             GlowSection(settings: settings, engine: engine)
             LyricsSection(settings: settings, engine: engine)
             ExperimentalSection(settings: settings, lockScreen: lockScreen)
-            GeneralSection(extensionSetup: extensionSetup, onQuit: onQuit)
+            GeneralSection(launchAtLogin: launchAtLogin, extensionSetup: extensionSetup, onQuit: onQuit)
         }
         .padding(16)
         .frame(width: 360)
@@ -154,8 +155,10 @@ private struct SectionCard<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Toggle(isOn: $isOn) {
+            HStack {
                 Label(title, systemImage: systemImage).font(.system(size: 13, weight: .semibold))
+                Spacer()
+                Toggle(title, isOn: $isOn).labelsHidden()
             }
             if isOn {
                 VStack(alignment: .leading, spacing: 9) { content }
@@ -219,8 +222,7 @@ private struct LyricsSection: View {
             }
             .font(.caption)
 
-            Toggle("Keep display awake while playing", isOn: $settings.keepDisplayAwake)
-                .font(.caption)
+            SwitchRow(title: "Keep display awake while playing", isOn: $settings.keepDisplayAwake)
 
             if case .failed = engine.lyricsStatus {
                 Button("Retry lyrics lookup") { engine.retryLyrics() }.font(.caption)
@@ -241,8 +243,10 @@ private struct ExperimentalSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Toggle(isOn: $settings.lockScreenEnabled) {
+            HStack {
                 Label("Show on lock screen", systemImage: "lock.display").font(.system(size: 12, weight: .semibold))
+                Spacer()
+                Toggle("Show on lock screen", isOn: $settings.lockScreenEnabled).labelsHidden()
             }
             Text(caption)
                 .font(.caption2)
@@ -251,6 +255,7 @@ private struct ExperimentalSection: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(.orange.opacity(0.45), style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
     }
 
@@ -264,25 +269,52 @@ private struct ExperimentalSection: View {
 }
 
 private struct GeneralSection: View {
+    @ObservedObject var launchAtLogin: LaunchAtLogin
     var extensionSetup: ExtensionSetup
     var onQuit: () -> Void
 
     var body: some View {
-        HStack {
-            Button {
-                extensionSetup.revealExtension()
-            } label: {
-                Label("Browser extension…", systemImage: "puzzlepiece.extension")
+        VStack(alignment: .leading, spacing: 8) {
+            SwitchRow(title: "Open at login", isOn: Binding(get: { launchAtLogin.isEnabled }, set: { launchAtLogin.setEnabled($0) }))
+            if launchAtLogin.needsApproval {
+                Button("Allow in System Settings → Login Items") { launchAtLogin.openLoginItemsSettings() }
+                    .font(.caption2)
             }
-            .help("Copies the Chrome extension to a stable folder and shows it in Finder. Load it from chrome://extensions → Load unpacked.")
-            Spacer()
-            Button("Quit", action: onQuit)
+            if let message = launchAtLogin.errorMessage {
+                Text(message).font(.caption2).foregroundStyle(.red)
+            }
+            HStack {
+                Button {
+                    extensionSetup.revealExtension()
+                } label: {
+                    Label("Browser extension…", systemImage: "puzzlepiece.extension")
+                }
+                .help("Copies the Chrome extension to a stable folder and shows it in Finder. Load it from chrome://extensions → Load unpacked.")
+                Spacer()
+                Text("v\(AppDelegate.appVersion)").foregroundStyle(.tertiary)
+                Button("Quit", action: onQuit)
+            }
+            .font(.caption)
         }
-        .font(.caption)
+        .onAppear { launchAtLogin.refresh() }
     }
 }
 
 // MARK: - Controls
+
+/// Caption-sized label with its switch aligned to the trailing edge.
+private struct SwitchRow: View {
+    let title: String
+    @Binding var isOn: Bool
+
+    var body: some View {
+        HStack {
+            Text(title).font(.caption)
+            Spacer()
+            Toggle(title, isOn: $isOn).labelsHidden()
+        }
+    }
+}
 
 private struct LabeledSlider: View {
     let title: String
