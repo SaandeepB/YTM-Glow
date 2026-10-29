@@ -12,19 +12,24 @@ final class LyricsAppearance: ObservableObject {
     @Published var visible = false
     @Published var artwork: CGImage?
     @Published var animation: LyricsAnimation = .pop
+    /// Set when the track has no lyrics: the overlay shows the beat
+    /// visualizer with this track line ("Title — Artist") instead.
+    @Published var beatTrack: String?
+    @Published var beatStatus = ""
 }
 
 struct LyricsOverlayView: View {
     @ObservedObject var presenter: LyricsPresenter
     @ObservedObject var appearance: LyricsAppearance
+    let beat: BeatMeter
 
     var body: some View {
         let frame = presenter.frame
         Group {
             switch appearance.style {
-            case .beam: BeamStyle(frame: frame, appearance: appearance, time: presenter.lyricTime)
-            case .cascade: CascadeStyle(frame: frame, appearance: appearance, time: presenter.lyricTime)
-            case .capsule: CapsuleStyle(frame: frame, appearance: appearance, time: presenter.lyricTime)
+            case .beam: BeamStyle(frame: frame, appearance: appearance, time: presenter.lyricTime, beat: beat)
+            case .cascade: CascadeStyle(frame: frame, appearance: appearance, time: presenter.lyricTime, beat: beat)
+            case .capsule: CapsuleStyle(frame: frame, appearance: appearance, time: presenter.lyricTime, beat: beat)
             }
         }
         .opacity(appearance.visible ? 1 : 0)
@@ -39,9 +44,29 @@ private struct BeamStyle: View {
     let frame: LyricsFrame
     @ObservedObject var appearance: LyricsAppearance
     let time: () -> Double?
+    let beat: BeatMeter
 
     var body: some View {
         let s = appearance.scale
+        if let track = appearance.beatTrack {
+            VStack(spacing: 12 * s) {
+                Spacer(minLength: 0)
+                BeatVisualizer(meter: beat, playing: appearance.visible, highlight: appearance.highlight.swiftUI,
+                               accent: appearance.accent.swiftUI, barCount: 29, height: 70 * s, barWidth: 9 * s, spacing: 7 * s)
+                Text("\(track)  ·  \(appearance.beatStatus)")
+                    .font(.system(size: 16 * s, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.6))
+                    .shadow(color: .black.opacity(0.5), radius: 2, y: 1)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 90)
+            .padding(.bottom, 18)
+        } else {
+            lyrics(scale: s)
+        }
+    }
+
+    private func lyrics(scale s: CGFloat) -> some View {
         VStack(spacing: 10 * s) {
             Spacer(minLength: 0)
             ZStack {
@@ -79,9 +104,49 @@ private struct CascadeStyle: View {
     let frame: LyricsFrame
     @ObservedObject var appearance: LyricsAppearance
     let time: () -> Double?
+    let beat: BeatMeter
 
     var body: some View {
         let s = appearance.scale
+        Group {
+            if let track = appearance.beatTrack {
+                VStack(spacing: 14 * s) {
+                    BeatVisualizer(meter: beat, playing: appearance.visible, highlight: appearance.highlight.swiftUI,
+                                   accent: appearance.accent.swiftUI, barCount: 27, height: 62 * s, barWidth: 8 * s, spacing: 6 * s)
+                    Text(track)
+                        .font(.system(size: 18 * s, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.85))
+                        .lineLimit(1)
+                    Text(appearance.beatStatus)
+                        .font(.system(size: 14 * s, weight: .medium, design: .rounded))
+                        .foregroundStyle(.white.opacity(0.5))
+                }
+            } else {
+                lyrics(scale: s)
+            }
+        }
+        .multilineTextAlignment(.center)
+        .padding(.vertical, 22 * s)
+        .padding(.horizontal, 34 * s)
+        .frame(maxWidth: .infinity)
+        .background {
+            ZStack {
+                VisualEffectBackground()
+                LinearGradient(colors: [appearance.highlight.swiftUI.opacity(0.18), appearance.accent.swiftUI.opacity(0.14)],
+                               startPoint: .topLeading, endPoint: .bottomTrailing)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 26 * s, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 26 * s, style: .continuous)
+                    .strokeBorder(LinearGradient(colors: [appearance.highlight.swiftUI.opacity(0.7), appearance.accent.swiftUI.opacity(0.5)],
+                                                 startPoint: .leading, endPoint: .trailing), lineWidth: 1.2)
+            }
+        }
+        .padding(16)
+        .frame(maxHeight: .infinity, alignment: .bottom)
+    }
+
+    private func lyrics(scale s: CGFloat) -> some View {
         VStack(spacing: 12 * s) {
             Text(frame.previousLine?.text ?? " ")
                 .font(.system(size: 17 * s, weight: .medium, design: .rounded))
@@ -108,25 +173,6 @@ private struct CascadeStyle: View {
                 .lineLimit(1)
                 .id("next-\(frame.nextLineIndex ?? -1)")
         }
-        .multilineTextAlignment(.center)
-        .padding(.vertical, 22 * s)
-        .padding(.horizontal, 34 * s)
-        .frame(maxWidth: .infinity)
-        .background {
-            ZStack {
-                VisualEffectBackground()
-                LinearGradient(colors: [appearance.highlight.swiftUI.opacity(0.18), appearance.accent.swiftUI.opacity(0.14)],
-                               startPoint: .topLeading, endPoint: .bottomTrailing)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 26 * s, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 26 * s, style: .continuous)
-                    .strokeBorder(LinearGradient(colors: [appearance.highlight.swiftUI.opacity(0.7), appearance.accent.swiftUI.opacity(0.5)],
-                                                 startPoint: .leading, endPoint: .trailing), lineWidth: 1.2)
-            }
-        }
-        .padding(16)
-        .frame(maxHeight: .infinity, alignment: .bottom)
     }
 }
 
@@ -136,13 +182,23 @@ private struct CapsuleStyle: View {
     let frame: LyricsFrame
     @ObservedObject var appearance: LyricsAppearance
     let time: () -> Double?
+    let beat: BeatMeter
 
     var body: some View {
         let s = appearance.scale
         HStack(spacing: 12 * s) {
             ArtworkBadge(image: appearance.artwork, colors: [appearance.highlight.swiftUI, appearance.accent.swiftUI], size: 26 * s)
             Group {
-                if let line = frame.currentLine {
+                if let track = appearance.beatTrack {
+                    HStack(spacing: 12 * s) {
+                        BeatVisualizer(meter: beat, playing: appearance.visible, highlight: appearance.highlight.swiftUI,
+                                       accent: appearance.accent.swiftUI, barCount: 15, height: 24 * s, barWidth: 4 * s, spacing: 3 * s)
+                        Text(track)
+                            .font(.system(size: 15 * s, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.8))
+                            .lineLimit(1)
+                    }
+                } else if let line = frame.currentLine {
                     KaraokeLine(line: line, litThrough: frame.wordIndex, fontSize: 17 * s, highlight: appearance.highlight.swiftUI,
                                 base: .white.opacity(0.55), weight: .semibold, alignment: .leading,
                                 animation: appearance.animation, time: time, playing: frame.isActive)

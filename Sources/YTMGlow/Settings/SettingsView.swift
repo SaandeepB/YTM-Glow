@@ -234,6 +234,7 @@ private struct LyricsSection: View {
             }
             .font(.caption)
 
+            SwitchRow(title: "Beat animation when there are no lyrics", isOn: $settings.beatWhenNoLyrics)
             SwitchRow(title: "Keep display awake while playing", isOn: $settings.keepDisplayAwake)
 
             if case .failed = engine.lyricsStatus {

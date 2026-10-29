@@ -17,13 +17,13 @@ final class LyricsOverlayController {
     private var placedStyle: LyricsStyle?
     private var placedScreenFrame: NSRect?
 
-    init(engine: PlayerEngine, presenter: LyricsPresenter, settings: AppSettings) {
+    init(engine: PlayerEngine, presenter: LyricsPresenter, settings: AppSettings, beat: BeatMeter) {
         self.engine = engine
         self.presenter = presenter
         self.settings = settings
 
         window = OverlayWindow(frame: NSRect(x: 0, y: 0, width: 800, height: 200))
-        let hosting = NSHostingView(rootView: LyricsOverlayView(presenter: presenter, appearance: appearance))
+        let hosting = NSHostingView(rootView: LyricsOverlayView(presenter: presenter, appearance: appearance, beat: beat))
         hosting.autoresizingMask = [.width, .height]
         hosting.wantsLayer = true
         hosting.layer?.backgroundColor = .clear
@@ -33,6 +33,10 @@ final class LyricsOverlayController {
             presenter.$frame.map { _ in () }.eraseToAnyPublisher(),
             engine.$palette.map { _ in () }.eraseToAnyPublisher(),
             engine.$artwork.map { _ in () }.eraseToAnyPublisher(),
+            engine.$lyricsStatus.map { _ in () }.eraseToAnyPublisher(),
+            engine.$track.map { _ in () }.eraseToAnyPublisher(),
+            engine.$clock.map { _ in () }.eraseToAnyPublisher(),
+            engine.$isAd.map { _ in () }.eraseToAnyPublisher(),
             settings.objectWillChange.map { _ in () }.eraseToAnyPublisher(),
         ]
         Publishers.MergeMany(triggers)
@@ -57,8 +61,15 @@ final class LyricsOverlayController {
         if appearance.animation != settings.lyricsAnimation { appearance.animation = settings.lyricsAnimation }
         if appearance.artwork !== engine.artwork { appearance.artwork = engine.artwork }
 
+        // No lyrics for this song: show the beat visualizer in their place.
+        let beatTrack = Self.showsBeat(settings: settings, engine: engine) ? engine.track.map(Self.trackLine) : nil
+        if appearance.beatTrack != beatTrack { appearance.beatTrack = beatTrack }
+        let status = BeatCaption.status(engine.lyricsStatus)
+        if appearance.beatStatus != status { appearance.beatStatus = status }
+
         let frame = presenter.frame
-        let shouldShow = settings.lyricsEnabled && frame.isActive && (frame.currentLine != nil || frame.nextLine != nil)
+        let showsLyrics = settings.lyricsEnabled && frame.isActive && (frame.currentLine != nil || frame.nextLine != nil)
+        let shouldShow = showsLyrics || beatTrack != nil
         if shouldShow {
             hideWork?.cancel()
             hideWork = nil
@@ -76,6 +87,15 @@ final class LyricsOverlayController {
             hideWork = work
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: work)
         }
+    }
+
+    /// Whether the overlay should show the beat visualizer instead of lyrics.
+    static func showsBeat(settings: AppSettings, engine: PlayerEngine) -> Bool {
+        settings.lyricsEnabled && settings.beatWhenNoLyrics && engine.isPlaying && engine.lyricsStatus.isUnavailable
+    }
+
+    static func trackLine(_ track: TrackPayload) -> String {
+        track.artist.isEmpty ? track.title : "\(track.title) — \(track.artist)"
     }
 
     /// Sizes and positions the window for the current style on the menu-bar display.

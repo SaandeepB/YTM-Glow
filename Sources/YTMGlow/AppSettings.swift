@@ -76,6 +76,8 @@ final class AppSettings: ObservableObject {
     @Published var lyricsOffset: Double { didSet { defaults.set(lyricsOffset, forKey: Key.lyricsOffset) } }
     /// Text size multiplier.
     @Published var lyricsScale: Double { didSet { defaults.set(lyricsScale, forKey: Key.lyricsScale) } }
+    /// Show a pulsing beat visualizer where lyrics would be when a song has none.
+    @Published var beatWhenNoLyrics: Bool { didSet { defaults.set(beatWhenNoLyrics, forKey: Key.beatWhenNoLyrics) } }
     @Published var lyricsAnimation: LyricsAnimation { didSet { defaults.set(lyricsAnimation.rawValue, forKey: Key.lyricsAnimation) } }
     /// Full-screen karaoke view on another display.
     @Published var stageEnabled: Bool { didSet { defaults.set(stageEnabled, forKey: Key.stageEnabled) } }
@@ -103,6 +105,7 @@ final class AppSettings: ObservableObject {
             Key.lyricsOffset: 0.0,
             Key.lyricsScale: 1.0,
             Key.lyricsAnimation: LyricsAnimation.pop.rawValue,
+            Key.beatWhenNoLyrics: true,
             Key.stageEnabled: false,
             Key.stageDisplayID: 0,
             Key.keepDisplayAwake: false,
@@ -121,6 +124,7 @@ final class AppSettings: ObservableObject {
         lyricsCustomColor = defaults.string(forKey: Key.lyricsCustomColor) ?? Self.defaultLyricsColor
         lyricsOffset = defaults.double(forKey: Key.lyricsOffset)
         lyricsScale = defaults.double(forKey: Key.lyricsScale)
+        beatWhenNoLyrics = defaults.bool(forKey: Key.beatWhenNoLyrics)
         lyricsAnimation = LyricsAnimation(rawValue: defaults.string(forKey: Key.lyricsAnimation) ?? "") ?? .pop
         stageEnabled = defaults.bool(forKey: Key.stageEnabled)
         stageDisplayID = UInt32(clamping: defaults.integer(forKey: Key.stageDisplayID))
@@ -128,8 +132,11 @@ final class AppSettings: ObservableObject {
         lockScreenEnabled = defaults.bool(forKey: Key.lockScreenEnabled)
     }
 
-    /// Whether the extension should stream audio levels.
-    var wantsLevels: Bool { (glowEnabled && glowMode == .musicSync) || stageEnabled }
+    /// Whether the extension should stream audio levels, given whether the
+    /// current song has lyrics (the beat visualizer needs levels when it doesn't).
+    func wantsLevels(lyricsUnavailable: Bool) -> Bool {
+        (glowEnabled && glowMode == .musicSync) || stageEnabled || (lyricsEnabled && beatWhenNoLyrics && lyricsUnavailable)
+    }
 
     private enum Key {
         static let glowEnabled = "glow.enabled"
@@ -146,6 +153,7 @@ final class AppSettings: ObservableObject {
         static let lyricsOffset = "lyrics.offset"
         static let lyricsScale = "lyrics.scale"
         static let lyricsAnimation = "lyrics.animation"
+        static let beatWhenNoLyrics = "lyrics.beatWhenMissing"
         static let stageEnabled = "stage.enabled"
         static let stageDisplayID = "stage.displayID"
         static let keepDisplayAwake = "display.keepAwake"

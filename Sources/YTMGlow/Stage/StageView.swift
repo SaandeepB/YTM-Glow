@@ -7,7 +7,7 @@ struct StageView: View {
     @ObservedObject var presenter: LyricsPresenter
     @ObservedObject var engine: PlayerEngine
     @ObservedObject var appearance: LyricsAppearance
-    let stage: StageModel
+    let beat: BeatMeter
     var onClose: () -> Void
 
     @State private var hovering = false
@@ -18,7 +18,7 @@ struct StageView: View {
             let s = max(0.6, min(geometry.size.height / 1080, 2.4))
             ZStack {
                 StageBackdrop(artwork: engine.artwork, highlight: appearance.highlight.swiftUI, accent: appearance.accent.swiftUI,
-                              stage: stage, scale: s)
+                              beat: beat, playing: engine.isPlaying, scale: s)
                 content(scale: s)
                     .padding(.horizontal, 140 * s)
                 if hovering {
@@ -40,7 +40,7 @@ struct StageView: View {
             if let lyrics = frame.lyrics {
                 lyricsStack(frame: frame, lyrics: lyrics, scale: s)
             } else {
-                NoLyricsCard(engine: engine, highlight: appearance.highlight.swiftUI, scale: s)
+                NoLyricsCard(engine: engine, beat: beat, highlight: appearance.highlight.swiftUI, accent: appearance.accent.swiftUI, scale: s)
             }
             Spacer(minLength: 0)
             StageFooter(engine: engine, highlight: appearance.highlight.swiftUI, accent: appearance.accent.swiftUI,
@@ -120,7 +120,8 @@ private struct StageBackdrop: View {
     let artwork: CGImage?
     let highlight: Color
     let accent: Color
-    let stage: StageModel
+    let beat: BeatMeter
+    let playing: Bool
     let scale: CGFloat
 
     var body: some View {
@@ -137,7 +138,7 @@ private struct StageBackdrop: View {
                 }
             }
             LinearGradient(colors: [highlight.opacity(0.32), .clear, accent.opacity(0.32)], startPoint: .topLeading, endPoint: .bottomTrailing)
-            BeatBloom(stage: stage, color: highlight, scale: scale)
+            BeatBloom(beat: beat, playing: playing, color: highlight, scale: scale)
             // Keep the text area readable on bright art.
             RadialGradient(colors: [.black.opacity(0.15), .black.opacity(0.6)], center: .center, startRadius: 200 * scale, endRadius: 1300 * scale)
         }
@@ -146,20 +147,62 @@ private struct StageBackdrop: View {
     }
 }
 
-/// A soft glow behind the lyrics that swells on the beat. Isolated so the
-/// ~20 Hz pulse redraws only this layer.
+/// A soft glow behind the lyrics that swells on the beat. Its own 20 fps
+/// timeline redraws only this layer, and stops while paused.
 private struct BeatBloom: View {
-    @ObservedObject var stage: StageModel
+    let beat: BeatMeter
+    let playing: Bool
     let color: Color
     let scale: CGFloat
 
     var body: some View {
-        RadialGradient(colors: [color.opacity(0.08 + 0.32 * stage.pulse), .clear], center: .center,
-                       startRadius: 0, endRadius: (700 + 260 * stage.pulse) * scale)
+        TimelineView(.animation(minimumInterval: 1.0 / 20, paused: !playing)) { _ in
+            let pulse = beat.current().pulse
+            RadialGradient(colors: [color.opacity(0.08 + 0.32 * pulse), .clear], center: .center,
+                           startRadius: 0, endRadius: (700 + 260 * pulse) * scale)
+        }
     }
 }
 
 // MARK: - Countdown, footer, no lyrics
+
+/// Album art that swells on each beat, with rings rippling out behind it.
+private struct PulsingArtwork: View {
+    let artwork: CGImage?
+    let beat: BeatMeter
+    let playing: Bool
+    let highlight: Color
+    let accent: Color
+    let size: CGFloat
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: !playing)) { context in
+            let state = beat.current()
+            let time = context.date.timeIntervalSinceReferenceDate
+            ZStack {
+                // Three rings drifting outward; the beat brightens them.
+                ForEach(0..<3, id: \.self) { ring in
+                    let phase = (time * 0.35 + Double(ring) / 3).truncatingRemainder(dividingBy: 1)
+                    RoundedRectangle(cornerRadius: size * 0.16, style: .continuous)
+                        .strokeBorder(highlight.opacity((1 - phase) * (0.25 + 0.5 * state.pulse)), lineWidth: size * 0.012)
+                        .frame(width: size * (1 + 0.55 * phase), height: size * (1 + 0.55 * phase))
+                }
+                Group {
+                    if let artwork {
+                        Image(decorative: artwork, scale: 1).resizable().aspectRatio(contentMode: .fill)
+                    } else {
+                        LinearGradient(colors: [highlight, accent], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    }
+                }
+                .frame(width: size, height: size)
+                .clipShape(RoundedRectangle(cornerRadius: size * 0.09, style: .continuous))
+                .shadow(color: highlight.opacity(0.35 + 0.5 * state.pulse), radius: size * (0.08 + 0.12 * state.pulse))
+                .scaleEffect(1 + 0.07 * state.pulse)
+            }
+            .frame(width: size * 1.6, height: size * 1.6)
+        }
+    }
+}
 
 /// Instrumental break: dots fill toward the next line, karaoke-style.
 private struct GapCountdown: View {
@@ -268,26 +311,29 @@ private struct ProgressStrip: View {
     }
 }
 
+/// No lyrics: album art that beats with the music, a big visualizer, and the title.
 private struct NoLyricsCard: View {
     @ObservedObject var engine: PlayerEngine
+    let beat: BeatMeter
     let highlight: Color
+    let accent: Color
     let scale: CGFloat
 
     var body: some View {
-        VStack(spacing: 28 * scale) {
-            if let art = engine.artwork {
-                Image(decorative: art, scale: 1)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 320 * scale, height: 320 * scale)
-                    .clipShape(RoundedRectangle(cornerRadius: 28 * scale, style: .continuous))
-                    .shadow(color: highlight.opacity(0.5), radius: 40 * scale)
+        let playing = engine.isPlaying && engine.lyricsStatus.isUnavailable
+        VStack(spacing: 34 * scale) {
+            PulsingArtwork(artwork: engine.artwork, beat: beat, playing: playing, highlight: highlight, accent: accent, size: 300 * scale)
+            if engine.lyricsStatus.isUnavailable {
+                BeatVisualizer(meter: beat, playing: playing, highlight: highlight, accent: accent,
+                               barCount: 41, height: 150 * scale, barWidth: 14 * scale, spacing: 10 * scale)
             }
-            Text(engine.track?.title ?? "")
-                .font(.system(size: 56 * scale, weight: .heavy, design: .rounded))
-            Text(message)
-                .font(.system(size: 24 * scale, weight: .medium, design: .rounded))
-                .foregroundStyle(.white.opacity(0.55))
+            VStack(spacing: 12 * scale) {
+                Text(engine.track?.title ?? "")
+                    .font(.system(size: 52 * scale, weight: .heavy, design: .rounded))
+                Text(message)
+                    .font(.system(size: 22 * scale, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.55))
+            }
         }
         .foregroundStyle(.white)
         .multilineTextAlignment(.center)

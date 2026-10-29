@@ -3,13 +3,6 @@ import Combine
 import SwiftUI
 import YTMGlowCore
 
-/// State the karaoke screen needs beyond the lyrics frame.
-@MainActor
-final class StageModel: ObservableObject {
-    /// 0…1 beat pulse for the backdrop bloom.
-    @Published var pulse: Double = 0
-}
-
 /// Full-screen karaoke view on another display ("karaoke screen").
 ///
 /// Opens on the chosen display (by default the first one without the menu
@@ -19,10 +12,7 @@ final class StageModel: ObservableObject {
 final class StageController {
     /// Hide after this long paused.
     static let pausedTimeout: TimeInterval = 30
-    /// Backdrop pulse updates are capped at this rate.
-    static let maxPulseRate: Double = 20
-
-    let model = StageModel()
+    private let beat: BeatMeter
     private let engine: PlayerEngine
     private let presenter: LyricsPresenter
     private let settings: AppSettings
@@ -31,17 +21,14 @@ final class StageController {
     private var subscriptions: Set<AnyCancellable> = []
     private var pausedSince: Date?
     private var pauseCheck: DispatchWorkItem?
-    private var envelope = BeatEnvelope()
-    private var lastLevelsAt: TimeInterval?
-    private var lastPulseAt: TimeInterval = 0
 
-    init(engine: PlayerEngine, presenter: LyricsPresenter, settings: AppSettings, appearance: LyricsAppearance) {
+    init(engine: PlayerEngine, presenter: LyricsPresenter, settings: AppSettings, appearance: LyricsAppearance, beat: BeatMeter) {
+        self.beat = beat
         self.engine = engine
         self.presenter = presenter
         self.settings = settings
         self.appearance = appearance
 
-        engine.observeLevels { [weak self] levels in self?.handleLevels(levels) }
         let triggers: [AnyPublisher<Void, Never>] = [
             engine.$track.map { _ in () }.eraseToAnyPublisher(),
             engine.$clock.map { _ in () }.eraseToAnyPublisher(),
@@ -91,7 +78,7 @@ final class StageController {
         if window == nil {
             let window = StageWindow(frame: screen.frame)
             window.onClose = { [weak self] in self?.settings.stageEnabled = false }
-            let view = StageView(presenter: presenter, engine: engine, appearance: appearance, stage: model) { [weak self] in
+            let view = StageView(presenter: presenter, engine: engine, appearance: appearance, beat: beat) { [weak self] in
                 self?.settings.stageEnabled = false
             }
             let hosting = NSHostingView(rootView: view)
@@ -125,17 +112,6 @@ final class StageController {
             window.orderOut(nil)
             window.close()
         })
-    }
-
-    private func handleLevels(_ levels: LevelsMessage) {
-        let now = engine.now()
-        let dt = lastLevelsAt.map { now - $0 } ?? (1.0 / 30)
-        lastLevelsAt = now
-        guard window != nil else { return }
-        let pulse = envelope.update(bass: levels.bass, mid: levels.mid, high: levels.high, dt: dt)
-        guard now - lastPulseAt >= 1 / Self.maxPulseRate, abs(pulse - model.pulse) > 0.02 else { return }
-        lastPulseAt = now
-        model.pulse = pulse
     }
 }
 

@@ -26,18 +26,20 @@ final class LockScreenController: ObservableObject {
     private let lockMonitor: ScreenLockMonitor
     private let glow: GlowController?
     private let appearance: LyricsAppearance
+    private let beat: BeatMeter
     private var space: SkyLightSpace?
     private var window: OverlayWindow?
     private var subscriptions: Set<AnyCancellable> = []
 
     init(engine: PlayerEngine, presenter: LyricsPresenter, settings: AppSettings, lockMonitor: ScreenLockMonitor,
-         glow: GlowController?, appearance: LyricsAppearance) {
+         glow: GlowController?, appearance: LyricsAppearance, beat: BeatMeter) {
         self.engine = engine
         self.presenter = presenter
         self.settings = settings
         self.lockMonitor = lockMonitor
         self.glow = glow
         self.appearance = appearance
+        self.beat = beat
 
         let triggers: [AnyPublisher<Void, Never>] = [
             lockMonitor.$isLocked.map { _ in () }.eraseToAnyPublisher(),
@@ -103,7 +105,7 @@ final class LockScreenController: ObservableObject {
             let window = OverlayWindow(frame: Self.cardFrame(on: screen))
             window.canBecomeVisibleWithoutLogin = true
             window.level = NSWindow.Level(rawValue: Int(CGShieldingWindowLevel()))
-            let root = LockScreenCard(engine: engine, presenter: presenter, appearance: appearance, settings: settings)
+            let root = LockScreenCard(engine: engine, presenter: presenter, appearance: appearance, settings: settings, beat: beat)
             let hosting = NSHostingView(rootView: root)
             hosting.wantsLayer = true
             hosting.layer?.backgroundColor = .clear
@@ -142,6 +144,7 @@ private struct LockScreenCard: View {
     @ObservedObject var presenter: LyricsPresenter
     @ObservedObject var appearance: LyricsAppearance
     @ObservedObject var settings: AppSettings
+    let beat: BeatMeter
 
     var body: some View {
         let frame = presenter.frame
@@ -173,6 +176,9 @@ private struct LockScreenCard: View {
                             animation: appearance.animation, time: presenter.lyricTime, playing: frame.isActive)
                     .id(frame.lineIndex)
                     .transition(.opacity)
+            } else if settings.lyricsEnabled, settings.beatWhenNoLyrics, engine.lyricsStatus.isUnavailable {
+                BeatVisualizer(meter: beat, playing: engine.isPlaying, highlight: appearance.highlight.swiftUI,
+                               accent: appearance.accent.swiftUI, barCount: 23, height: 56, barWidth: 8, spacing: 6)
             } else if settings.lyricsEnabled, let next = frame.nextLine {
                 Text(next.text)
                     .font(.system(size: 22, weight: .semibold, design: .rounded))
