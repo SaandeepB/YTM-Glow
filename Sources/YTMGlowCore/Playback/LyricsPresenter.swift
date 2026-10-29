@@ -54,6 +54,12 @@ public final class LyricsPresenter: ObservableObject {
         }
     }
 
+    /// Playback time in lyric terms (position minus the offset), or nil without lyrics.
+    public func lyricTime() -> Double? {
+        guard engine.lyricsStatus.lyrics != nil, let position = engine.position() else { return nil }
+        return position - offset
+    }
+
     /// The lyric position at the engine's current time, after the offset.
     public func currentPosition() -> LyricPosition? {
         guard let lyrics = engine.lyricsStatus.lyrics, let position = engine.position() else { return nil }
