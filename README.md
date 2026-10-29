@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/images/icon.png" width="128" alt="YTM Glow icon"></p>
+
 # YTM Glow
 
 A personal macOS menu bar app that turns what's playing in **YouTube Music**
@@ -22,6 +24,18 @@ WebSocket. Nothing leaves your Mac except lyric lookups (LRCLIB) and album-art
 downloads (Google's image hosts).
 
 Requires macOS 14 or later on Apple silicon. Not affiliated with YouTube or Google.
+
+| Edge glow (album colors) | Settings popover |
+|---|---|
+| <img src="docs/images/glow.png" width="520" alt="Pink-to-blue glow around the edges of a dark desktop"> | <img src="docs/images/popover.png" width="230" alt="Menu bar popover with glow, lyrics and experimental settings"> |
+
+Lyrics styles: **Beam**, **Cascade**, **Capsule**. The current word glows and the words already sung stay lit:
+
+<img src="docs/images/lyrics-beam.png" width="700" alt="Beam style: one large line with the first four words lit">
+<img src="docs/images/lyrics-cascade.png" width="700" alt="Cascade style: lyric card with a gradient border">
+<img src="docs/images/lyrics-capsule.png" width="560" alt="Capsule style: compact pill with album art">
+
+<sub>Rendered offscreen by the app itself (`YTMGlow --render-previews <dir>`) with sample lyrics, so they're real views, not mockups.</sub>
 
 ## Build the app
 
@@ -64,6 +78,8 @@ Click the menu bar icon:
   highlight color, size, a timing offset (+ shows lyrics later), and *Keep
   display awake while playing*.
 - **Show on lock screen** (experimental, private API).
+- **Open at login** (uses `SMAppService`; macOS may ask you to allow it in
+  System Settings → General → Login Items, and the popover links there).
 - **Browser extension…** and **Quit**.
 
 The popover also shows the current track, whether synced lyrics were found,
@@ -206,6 +222,13 @@ full-screen apps, sleep/wake, lock screen) is in
 - **Steady glow, "Click the YTM tab"**: click once inside the YouTube Music page.
 - **Logs**: `log stream --level info --predicate 'subsystem == "io.github.saandeepb.ytmglow"'`
 
+## Icons and previews
+
+The app icon and extension icons are original artwork drawn in code:
+`swift scripts/make-icon.swift` regenerates `Resources/AppIcon.icns`,
+`docs/images/icon.png` and `extension/icons/`. The README screenshots come
+from `swift build && .build/debug/YTMGlow --render-previews docs/images`.
+
 ## Layout
 
 ```
@@ -215,5 +238,6 @@ Tests/YTMGlowCoreTests Swift Testing suites + fixtures
 extension/             the unpacked Chrome extension (MV3)
 extension-tests/       Node unit tests, Playwright e2e, demo script (kept out of extension/)
 scripts/build-app.sh   builds and ad-hoc signs build/YTM Glow.app
+scripts/make-icon.swift draws the app and extension icons
 docs/                  PROTOCOL.md, MANUAL_QA.md, LOCK_SCREEN.md
 ```

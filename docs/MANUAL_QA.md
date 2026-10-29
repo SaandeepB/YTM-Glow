@@ -66,6 +66,8 @@ log stream --level info --predicate 'subsystem == "io.github.saandeepb.ytmglow"'
 
 - [ ] Each control in the popover takes effect immediately: glow on/off, music sync / steady, thickness, intensity, album/custom colors (both wells), lyrics on/off, style, colors, size, timing.
 - [ ] Settings survive quitting and relaunching the app.
+- [ ] **Open at login**: turn on (from the built app, ideally in /Applications). If macOS asks, allow it in System Settings → General → Login Items. Log out and back in: YTM Glow starts with no Dock icon. Turn off: it no longer starts.
+- [ ] The app icon shows in Finder, Login Items and the "Browser extension…" alert; the extension shows its icon in chrome://extensions and the toolbar.
 - [ ] With music playing, Activity Monitor → CPU: note YTM Glow and WindowServer %. Expected: YTM Glow ~1–3 %. WindowServer rises by roughly 5–15 points with music sync on two 5K displays (less on one display, ~0 in steady mode).
 - [ ] The app has no Dock icon and no window besides the popover and overlays.
 - [ ] No permission prompts appear (no Screen Recording, Microphone, Accessibility). Chrome shows no "local network access" prompt.
