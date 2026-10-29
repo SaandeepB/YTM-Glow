@@ -60,7 +60,9 @@ async function launch(extraArgs = []) {
   const context = await chromium.launchPersistentContext(userDataDir, {
     channel: 'chromium',
     headless: true,
-    args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`, ...extraArgs],
+    // Fake audio output: the Web Audio clock runs even when the Mac's output
+    // device isn't pulling samples (seen with some speaker/display setups).
+    args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`, '--disable-audio-output', ...extraArgs],
   });
   let [worker] = context.serviceWorkers();
   if (!worker) worker = await context.waitForEvent('serviceworker');
