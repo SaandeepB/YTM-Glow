@@ -4,6 +4,10 @@ import Network
 public struct BridgeClientID: Hashable, Sendable, CustomStringConvertible {
     public let raw: Int
     public var description: String { "client-\(raw)" }
+
+    public init(raw: Int) {
+        self.raw = raw
+    }
 }
 
 public enum BridgeEvent: Sendable {
