@@ -10,9 +10,10 @@ final class StatusItemController: NSObject {
     private var outsideClickMonitor: Any?
     private var escapeMonitor: Any?
 
-    init(settings: AppSettings, engine: PlayerEngine, lockScreen: LockScreenController, extensionSetup: ExtensionSetup) {
+    init(settings: AppSettings, engine: PlayerEngine, lockScreen: LockScreenController, launchAtLogin: LaunchAtLogin, extensionSetup: ExtensionSetup) {
         super.init()
-        let view = SettingsView(settings: settings, engine: engine, lockScreen: lockScreen, extensionSetup: extensionSetup) {
+        let view = SettingsView(settings: settings, engine: engine, lockScreen: lockScreen, launchAtLogin: launchAtLogin,
+                                extensionSetup: extensionSetup) {
             NSApp.terminate(nil)
         }
         popover.contentViewController = NSHostingController(rootView: view)

@@ -24,14 +24,14 @@ final class LockScreenController: ObservableObject {
     private let presenter: LyricsPresenter
     private let settings: AppSettings
     private let lockMonitor: ScreenLockMonitor
-    private let glow: GlowController
+    private let glow: GlowController?
     private let appearance: LyricsAppearance
     private var space: SkyLightSpace?
     private var window: OverlayWindow?
     private var subscriptions: Set<AnyCancellable> = []
 
     init(engine: PlayerEngine, presenter: LyricsPresenter, settings: AppSettings, lockMonitor: ScreenLockMonitor,
-         glow: GlowController, appearance: LyricsAppearance) {
+         glow: GlowController?, appearance: LyricsAppearance) {
         self.engine = engine
         self.presenter = presenter
         self.settings = settings
@@ -65,7 +65,7 @@ final class LockScreenController: ObservableObject {
         }
 
         guard let space = ensureSpace() else { return }
-        glow.lockScreenSpace = space
+        glow?.lockScreenSpace = space
 
         let hasSomethingToShow = engine.track != nil && engine.isPlaying && (settings.lyricsEnabled || settings.glowEnabled)
         if hasSomethingToShow {
@@ -123,7 +123,7 @@ final class LockScreenController: ObservableObject {
     private func tearDown() {
         closeCard()
         // Moves the glow back to ordinary windows.
-        glow.lockScreenSpace = nil
+        glow?.lockScreenSpace = nil
     }
 
     /// Lower-middle of the menu-bar display: clear of the clock above and the

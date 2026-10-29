@@ -32,7 +32,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let lockScreen = LockScreenController(engine: engine, presenter: presenter, settings: settings, lockMonitor: ScreenLockMonitor(),
                                               glow: glow, appearance: lyricsOverlay.appearance)
         self.lockScreen = lockScreen
-        statusItem = StatusItemController(settings: settings, engine: engine, lockScreen: lockScreen, extensionSetup: ExtensionSetup())
+        statusItem = StatusItemController(settings: settings, engine: engine, lockScreen: lockScreen, launchAtLogin: LaunchAtLogin(),
+                                          extensionSetup: ExtensionSetup())
 
         // Keep the display awake only while music actually plays.
         Publishers.MergeMany([
