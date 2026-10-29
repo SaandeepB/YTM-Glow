@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/images/icon.png" width="128" alt="YTM Glow icon"></p>
+
 # YTM Glow
 
 A personal macOS menu bar app that turns what's playing in **YouTube Music**
@@ -11,6 +13,10 @@ into light and lyrics:
   **Cascade** (previous / current / next on a frosted card) and **Capsule** (a
   compact pill under the menu bar).
 - **Menu bar only** — no Dock icon; one popover holds every setting.
+- **Experimental: lock screen** — optionally keeps the glow and a now-playing
+  lyrics card visible over the lock screen (private macOS APIs, off by
+  default; see [docs/LOCK_SCREEN.md](docs/LOCK_SCREEN.md)), plus an option to
+  keep the display awake while music plays.
 
 YouTube Music runs in the browser, so a small Chrome extension (works in
 Chrome, Brave, Edge and Arc) reports what's playing to the app over a local
@@ -18,6 +24,18 @@ WebSocket. Nothing leaves your Mac except lyric lookups (LRCLIB) and album-art
 downloads (Google's image hosts).
 
 Requires macOS 14 or later on Apple silicon. Not affiliated with YouTube or Google.
+
+| Edge glow (album colors) | Settings popover |
+|---|---|
+| <img src="docs/images/glow.png" width="520" alt="Pink-to-blue glow around the edges of a dark desktop"> | <img src="docs/images/popover.png" width="230" alt="Menu bar popover with glow, lyrics and experimental settings"> |
+
+Lyrics styles: **Beam**, **Cascade**, **Capsule**. The current word glows and the words already sung stay lit:
+
+<img src="docs/images/lyrics-beam.png" width="700" alt="Beam style: one large line with the first four words lit">
+<img src="docs/images/lyrics-cascade.png" width="700" alt="Cascade style: lyric card with a gradient border">
+<img src="docs/images/lyrics-capsule.png" width="560" alt="Capsule style: compact pill with album art">
+
+<sub>Rendered offscreen by the app itself (`YTMGlow --render-previews <dir>`) with sample lyrics, so they're real views, not mockups.</sub>
 
 ## Build the app
 
@@ -57,7 +75,11 @@ Click the menu bar icon:
 - **Edge glow**: on/off, *Music sync* vs *Steady*, thickness, intensity,
   album-art vs custom colors (two color wells).
 - **Lyrics**: on/off, style (Beam / Cascade / Capsule), album-art vs custom
-  highlight color, size, and a timing offset (+ shows lyrics later).
+  highlight color, size, a timing offset (+ shows lyrics later), and *Keep
+  display awake while playing*.
+- **Show on lock screen** (experimental, private API).
+- **Open at login** (uses `SMAppService`; macOS may ask you to allow it in
+  System Settings → General → Login Items, and the popover links there).
 - **Browser extension…** and **Quit**.
 
 The popover also shows the current track, whether synced lyrics were found,
@@ -131,6 +153,8 @@ Use the timing offset if a whole song runs early or late.
   only runs on `https://music.youtube.com/*`.
 - No macOS permissions: no Screen Recording, Microphone or Accessibility.
   It doesn't use the private MediaRemote / Now Playing APIs.
+- The only private API is the optional lock-screen display (SkyLight), and it
+  is never called unless you turn that option on.
 - Chrome's Local Network Access rules don't block the extension:
   the WebSocket is opened from the extension's service worker, and the
   automated test connects without a prompt in Chromium 156.
@@ -155,7 +179,7 @@ expect less on a single built-in display.
 
 ```sh
 swift build
-swift test                                   # 63 Swift tests: parser, timing, cleanup,
+swift test                                   # 68 Swift tests: parser, timing, cleanup,
                                              # palette, protocol, LRCLIB client, cache,
                                              # and a loopback WebSocket integration suite
 
@@ -184,6 +208,9 @@ full-screen apps, sleep/wake, lock screen) is in
 - Glow above full-screen apps, multiple-display hot-plug, sleep/wake, and the
   look of each lyrics style. These need eyes on a screen; see MANUAL_QA.md.
 - Brave, Edge and Arc (only Chromium was automated).
+- The lock-screen display on an actually locked screen (the private calls are
+  verified to succeed; visibility needs a human). Step-by-step checks are in
+  [docs/LOCK_SCREEN.md](docs/LOCK_SCREEN.md).
 
 ## Troubleshooting
 
@@ -195,6 +222,13 @@ full-screen apps, sleep/wake, lock screen) is in
 - **Steady glow, "Click the YTM tab"**: click once inside the YouTube Music page.
 - **Logs**: `log stream --level info --predicate 'subsystem == "io.github.saandeepb.ytmglow"'`
 
+## Icons and previews
+
+The app icon and extension icons are original artwork drawn in code:
+`swift scripts/make-icon.swift` regenerates `Resources/AppIcon.icns`,
+`docs/images/icon.png` and `extension/icons/`. The README screenshots come
+from `swift build && .build/debug/YTMGlow --render-previews docs/images`.
+
 ## Layout
 
 ```
@@ -204,5 +238,6 @@ Tests/YTMGlowCoreTests Swift Testing suites + fixtures
 extension/             the unpacked Chrome extension (MV3)
 extension-tests/       Node unit tests, Playwright e2e, demo script (kept out of extension/)
 scripts/build-app.sh   builds and ad-hoc signs build/YTM Glow.app
-docs/                  PROTOCOL.md, MANUAL_QA.md
+scripts/make-icon.swift draws the app and extension icons
+docs/                  PROTOCOL.md, MANUAL_QA.md, LOCK_SCREEN.md
 ```

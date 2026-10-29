@@ -57,6 +57,10 @@ final class AppSettings: ObservableObject {
     @Published var lyricsOffset: Double { didSet { defaults.set(lyricsOffset, forKey: Key.lyricsOffset) } }
     /// Text size multiplier.
     @Published var lyricsScale: Double { didSet { defaults.set(lyricsScale, forKey: Key.lyricsScale) } }
+    /// Prevent display sleep while music plays.
+    @Published var keepDisplayAwake: Bool { didSet { defaults.set(keepDisplayAwake, forKey: Key.keepDisplayAwake) } }
+    /// Experimental, private API: show glow and lyrics over the lock screen.
+    @Published var lockScreenEnabled: Bool { didSet { defaults.set(lockScreenEnabled, forKey: Key.lockScreenEnabled) } }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -74,6 +78,8 @@ final class AppSettings: ObservableObject {
             Key.lyricsCustomColor: Self.defaultLyricsColor,
             Key.lyricsOffset: 0.0,
             Key.lyricsScale: 1.0,
+            Key.keepDisplayAwake: false,
+            Key.lockScreenEnabled: false,
         ])
         glowEnabled = defaults.bool(forKey: Key.glowEnabled)
         glowMode = GlowMode(rawValue: defaults.string(forKey: Key.glowMode) ?? "") ?? .musicSync
@@ -88,6 +94,8 @@ final class AppSettings: ObservableObject {
         lyricsCustomColor = defaults.string(forKey: Key.lyricsCustomColor) ?? Self.defaultLyricsColor
         lyricsOffset = defaults.double(forKey: Key.lyricsOffset)
         lyricsScale = defaults.double(forKey: Key.lyricsScale)
+        keepDisplayAwake = defaults.bool(forKey: Key.keepDisplayAwake)
+        lockScreenEnabled = defaults.bool(forKey: Key.lockScreenEnabled)
     }
 
     /// Whether the extension should stream audio levels.
@@ -107,5 +115,7 @@ final class AppSettings: ObservableObject {
         static let lyricsCustomColor = "lyrics.customColor"
         static let lyricsOffset = "lyrics.offset"
         static let lyricsScale = "lyrics.scale"
+        static let keepDisplayAwake = "display.keepAwake"
+        static let lockScreenEnabled = "experimental.lockScreen"
     }
 }

@@ -147,3 +147,12 @@ test('extension folder has no files Chrome refuses to load', async () => {
   const reserved = entries.filter((name) => name.split('/').some((part) => part.startsWith('_')));
   assert.deepEqual(reserved, []);
 });
+
+test('every icon the manifest references exists', async () => {
+  const { readFile, access } = await import('node:fs/promises');
+  const base = new URL('../../extension/', import.meta.url);
+  const manifest = JSON.parse(await readFile(new URL('manifest.json', base), 'utf8'));
+  const paths = [...Object.values(manifest.icons || {}), ...Object.values(manifest.action?.default_icon || {})];
+  assert.ok(paths.length >= 4);
+  for (const path of paths) await access(new URL(path, base));
+});

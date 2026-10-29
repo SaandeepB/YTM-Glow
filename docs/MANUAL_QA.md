@@ -57,13 +57,17 @@ log stream --level info --predicate 'subsystem == "io.github.saandeepb.ytmglow"'
 ## 5. Sleep / wake and lock
 
 - [ ] Close the lid (or Apple menu → Sleep) while music plays. Wake: the app is still running, the extension reconnects, and glow and lyrics resume when music plays.
-- [ ] Lock the screen (⌃⌘Q) while music plays: overlays are not shown on the lock screen in this version (that's Phase 2, experimental). Unlock: overlays are back.
+- [ ] With **Show on lock screen** off (the default): lock the screen (⌃⌘Q) while music plays. Overlays are not shown on the lock screen. Unlock: overlays are back.
+- [ ] With **Show on lock screen** on: follow the step-by-step checklist in [LOCK_SCREEN.md](LOCK_SCREEN.md#what-you-must-test-by-hand).
+- [ ] **Keep display awake while playing** on: the display doesn't sleep while music plays (`pmset -g assertions` lists "YTM Glow: music is playing"); after pausing it sleeps normally.
 - [ ] Leave the Mac idle with nothing playing for 10 minutes: Activity Monitor shows YTM Glow at ~0% CPU.
 
 ## 6. Settings and performance
 
 - [ ] Each control in the popover takes effect immediately: glow on/off, music sync / steady, thickness, intensity, album/custom colors (both wells), lyrics on/off, style, colors, size, timing.
 - [ ] Settings survive quitting and relaunching the app.
+- [ ] **Open at login**: turn on (from the built app, ideally in /Applications). If macOS asks, allow it in System Settings → General → Login Items. Log out and back in: YTM Glow starts with no Dock icon. Turn off: it no longer starts.
+- [ ] The app icon shows in Finder, Login Items and the "Browser extension…" alert; the extension shows its icon in chrome://extensions and the toolbar.
 - [ ] With music playing, Activity Monitor → CPU: note YTM Glow and WindowServer %. Expected: YTM Glow ~1–3 %. WindowServer rises by roughly 5–15 points with music sync on two 5K displays (less on one display, ~0 in steady mode).
 - [ ] The app has no Dock icon and no window besides the popover and overlays.
 - [ ] No permission prompts appear (no Screen Recording, Microphone, Accessibility). Chrome shows no "local network access" prompt.

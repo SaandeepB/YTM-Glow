@@ -206,9 +206,34 @@ private struct ArtworkBadge: View {
     }
 }
 
+private struct RenderingPreviewKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// True while rendering offscreen previews, where AppKit blur can't be captured.
+    var isRenderingPreview: Bool {
+        get { self[RenderingPreviewKey.self] }
+        set { self[RenderingPreviewKey.self] = newValue }
+    }
+}
+
 /// Behind-window blur that stays active while the app is in the background.
-struct VisualEffectBackground: NSViewRepresentable {
+struct VisualEffectBackground: View {
     var material: NSVisualEffectView.Material = .hudWindow
+    @Environment(\.isRenderingPreview) private var isRenderingPreview
+
+    var body: some View {
+        if isRenderingPreview {
+            Color(white: 0.12).opacity(0.72)
+        } else {
+            BlurView(material: material)
+        }
+    }
+}
+
+private struct BlurView: NSViewRepresentable {
+    var material: NSVisualEffectView.Material
 
     func makeNSView(context: Context) -> NSVisualEffectView {
         let view = NSVisualEffectView()
