@@ -14,6 +14,11 @@ into light and lyrics:
   compact pill under the menu bar), with three animations: **Light up**,
   **Pop** (the sung word springs up; new lines rise in word by word) and
   **Karaoke** (color sweeps through each word as it's sung).
+- **Beat visualizer for songs without lyrics** — when a song has no synced
+  lyrics (instrumental, not on LRCLIB, or lyrics offline), mirrored equalizer
+  bars in the album colors pulse with the bass, mids and highs where the lyrics
+  would be, on the overlay, the karaoke screen (with the album art beating
+  along) and the lock-screen card.
 - **Karaoke screen** — a full-screen karaoke view on your second display:
   huge lyrics with a word-by-word color sweep, the next two lines underneath,
   a countdown through instrumental breaks, blurred album art that blooms on the
@@ -45,6 +50,11 @@ Animations: **Pop** lifts the word being sung; **Karaoke** sweeps color through 
 
 <img src="docs/images/animation-pop.png" width="560" alt="Pop animation: the current word lifted and glowing">
 <img src="docs/images/animation-karaoke.png" width="560" alt="Karaoke animation: color sweeping through the word being sung">
+
+No lyrics? The beat visualizer takes their place:
+
+<img src="docs/images/beat-beam.png" width="560" alt="Beat visualizer: mirrored pink-to-blue equalizer bars with the track name below">
+<img src="docs/images/karaoke-screen-beat.png" width="760" alt="Karaoke screen for an instrumental: pulsing album art with rings, large equalizer bars, title">
 
 The karaoke screen on a second display:
 
@@ -91,7 +101,8 @@ Click the menu bar icon:
   album-art vs custom colors (two color wells).
 - **Lyrics**: on/off, style (Beam / Cascade / Capsule), animation (Light up /
   Pop / Karaoke), album-art vs custom highlight color, size, a timing offset
-  (+ shows lyrics later), and *Keep display awake while playing*.
+  (+ shows lyrics later), *Beat animation when there are no lyrics* (on by
+  default), and *Keep display awake while playing*.
 - **Karaoke screen**: on/off and which display (*Automatic* = the first display
   without the menu bar; with only one display it stays off unless you pick
   it). It opens while music plays, stays through pauses up to 30 s, and closes
@@ -130,7 +141,9 @@ music.youtube.com tab                    Chrome extension                     YT
   same-origin (MSE `blob:`) media, because routing cross-origin media into Web
   Audio would silence it, and it never routes audio into a suspended context.
   If the tap can't be created the glow falls back to steady. Levels are only
-  measured while the app asks for them (music-sync glow on).
+  measured while the app asks for them: music-sync glow, the karaoke screen,
+  or the beat visualizer for a song without lyrics. Otherwise the extension
+  doesn't analyse audio at all.
 - **Bridge**: the service worker keeps one WebSocket to `ws://127.0.0.1:47816`
   and reconnects with backoff (0.5 s → 5 s) while a YouTube Music tab is open.
   The message format is documented in [docs/PROTOCOL.md](docs/PROTOCOL.md), so

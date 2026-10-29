@@ -46,6 +46,18 @@ log stream --level info --predicate 'subsystem == "io.github.saandeepb.ytmglow"'
 - [ ] Full-screen apps on the other display, and Spaces switching: the karaoke screen stays on its display.
 - [ ] Activity Monitor while the karaoke screen plays: note YTM Glow and WindowServer CPU (Karaoke redraws the current line up to 60 times a second; on the built-in display YTM Glow measured ~1.4 %).
 
+## 1c. Beat visualizer (songs without lyrics)
+
+- [ ] Play an instrumental or an obscure track. Once the popover says "No lyrics found" / "Instrumental", the overlay shows mirrored bars (taller in the middle) where lyrics would be, with "Title — Artist · status".
+- [ ] The bars follow the music: bigger on kicks and loud passages, smaller in quiet parts. Try each style (Beam, Cascade, Capsule).
+- [ ] Before clicking in the YTM tab (no audio tap yet), the bars breathe slowly instead of freezing. After one click they follow the beat.
+- [ ] Pause: the bars freeze and the overlay fades out. Play: they return.
+- [ ] Skip to a song with lyrics: the visualizer is replaced by lyrics within a second or so.
+- [ ] Karaoke screen on: the instrumental shows pulsing album art with rings, large bars and the title.
+- [ ] Lock-screen display on: the card shows small bars under the title.
+- [ ] Turn off "Beat animation when there are no lyrics": nothing is shown for those songs.
+- [ ] Glow on Steady and karaoke screen off: the extension popup says "Beat sync on" only while a no-lyrics song plays, and goes back to off for songs with lyrics.
+
 ## 2. Recovery
 
 - [ ] Quit the app while music plays, relaunch it: within ~5 s glow and lyrics return without touching the browser.
