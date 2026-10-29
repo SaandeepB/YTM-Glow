@@ -1,0 +1,28 @@
+# SwiftPM / Xcode
+.build/
+.swiftpm/
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+Package.resolved
+
+# App bundle output
+build/
+
+# Node / Playwright
+node_modules/
+extension/test-results/
+extension/playwright-report/
+extension/.e2e-profile/
+
+# macOS
+.DS_Store
+
+# Local agent workspace
+.context/
+
+# Never commit secrets
+.env
+*.pem
+*.p12
+*.key
