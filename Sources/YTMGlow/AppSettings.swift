@@ -31,6 +31,25 @@ enum LyricsStyle: String, CaseIterable, Identifiable {
     }
 }
 
+/// How words come alive as they're sung.
+enum LyricsAnimation: String, CaseIterable, Identifiable {
+    /// Each word switches on. Cheapest: one redraw per word.
+    case lightUp
+    /// Each word springs up as it's sung; new lines rise in word by word.
+    case pop
+    /// Classic karaoke: color sweeps through every word left to right.
+    case karaoke
+
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .lightUp: return "Light up"
+        case .pop: return "Pop"
+        case .karaoke: return "Karaoke"
+        }
+    }
+}
+
 /// User preferences, persisted in UserDefaults.
 @MainActor
 final class AppSettings: ObservableObject {
@@ -57,6 +76,11 @@ final class AppSettings: ObservableObject {
     @Published var lyricsOffset: Double { didSet { defaults.set(lyricsOffset, forKey: Key.lyricsOffset) } }
     /// Text size multiplier.
     @Published var lyricsScale: Double { didSet { defaults.set(lyricsScale, forKey: Key.lyricsScale) } }
+    @Published var lyricsAnimation: LyricsAnimation { didSet { defaults.set(lyricsAnimation.rawValue, forKey: Key.lyricsAnimation) } }
+    /// Full-screen karaoke view on another display.
+    @Published var stageEnabled: Bool { didSet { defaults.set(stageEnabled, forKey: Key.stageEnabled) } }
+    /// `CGDirectDisplayID` for the karaoke screen; 0 = automatic (first display without the menu bar).
+    @Published var stageDisplayID: UInt32 { didSet { defaults.set(Int(stageDisplayID), forKey: Key.stageDisplayID) } }
     /// Prevent display sleep while music plays.
     @Published var keepDisplayAwake: Bool { didSet { defaults.set(keepDisplayAwake, forKey: Key.keepDisplayAwake) } }
     /// Experimental, private API: show glow and lyrics over the lock screen.
@@ -78,6 +102,9 @@ final class AppSettings: ObservableObject {
             Key.lyricsCustomColor: Self.defaultLyricsColor,
             Key.lyricsOffset: 0.0,
             Key.lyricsScale: 1.0,
+            Key.lyricsAnimation: LyricsAnimation.pop.rawValue,
+            Key.stageEnabled: false,
+            Key.stageDisplayID: 0,
             Key.keepDisplayAwake: false,
             Key.lockScreenEnabled: false,
         ])
@@ -94,12 +121,15 @@ final class AppSettings: ObservableObject {
         lyricsCustomColor = defaults.string(forKey: Key.lyricsCustomColor) ?? Self.defaultLyricsColor
         lyricsOffset = defaults.double(forKey: Key.lyricsOffset)
         lyricsScale = defaults.double(forKey: Key.lyricsScale)
+        lyricsAnimation = LyricsAnimation(rawValue: defaults.string(forKey: Key.lyricsAnimation) ?? "") ?? .pop
+        stageEnabled = defaults.bool(forKey: Key.stageEnabled)
+        stageDisplayID = UInt32(clamping: defaults.integer(forKey: Key.stageDisplayID))
         keepDisplayAwake = defaults.bool(forKey: Key.keepDisplayAwake)
         lockScreenEnabled = defaults.bool(forKey: Key.lockScreenEnabled)
     }
 
     /// Whether the extension should stream audio levels.
-    var wantsLevels: Bool { glowEnabled && glowMode == .musicSync }
+    var wantsLevels: Bool { (glowEnabled && glowMode == .musicSync) || stageEnabled }
 
     private enum Key {
         static let glowEnabled = "glow.enabled"
@@ -115,6 +145,9 @@ final class AppSettings: ObservableObject {
         static let lyricsCustomColor = "lyrics.customColor"
         static let lyricsOffset = "lyrics.offset"
         static let lyricsScale = "lyrics.scale"
+        static let lyricsAnimation = "lyrics.animation"
+        static let stageEnabled = "stage.enabled"
+        static let stageDisplayID = "stage.displayID"
         static let keepDisplayAwake = "display.keepAwake"
         static let lockScreenEnabled = "experimental.lockScreen"
     }

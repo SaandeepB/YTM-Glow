@@ -11,6 +11,7 @@ final class LyricsAppearance: ObservableObject {
     @Published var scale: Double = 1
     @Published var visible = false
     @Published var artwork: CGImage?
+    @Published var animation: LyricsAnimation = .pop
 }
 
 struct LyricsOverlayView: View {
@@ -21,9 +22,9 @@ struct LyricsOverlayView: View {
         let frame = presenter.frame
         Group {
             switch appearance.style {
-            case .beam: BeamStyle(frame: frame, appearance: appearance)
-            case .cascade: CascadeStyle(frame: frame, appearance: appearance)
-            case .capsule: CapsuleStyle(frame: frame, appearance: appearance)
+            case .beam: BeamStyle(frame: frame, appearance: appearance, time: presenter.lyricTime)
+            case .cascade: CascadeStyle(frame: frame, appearance: appearance, time: presenter.lyricTime)
+            case .capsule: CapsuleStyle(frame: frame, appearance: appearance, time: presenter.lyricTime)
             }
         }
         .opacity(appearance.visible ? 1 : 0)
@@ -37,6 +38,7 @@ struct LyricsOverlayView: View {
 private struct BeamStyle: View {
     let frame: LyricsFrame
     @ObservedObject var appearance: LyricsAppearance
+    let time: () -> Double?
 
     var body: some View {
         let s = appearance.scale
@@ -44,7 +46,8 @@ private struct BeamStyle: View {
             Spacer(minLength: 0)
             ZStack {
                 if let line = frame.currentLine {
-                    KaraokeLine(line: line, litThrough: frame.wordIndex, fontSize: 40 * s, highlight: appearance.highlight.swiftUI)
+                    KaraokeLine(line: line, litThrough: frame.wordIndex, fontSize: 40 * s, highlight: appearance.highlight.swiftUI,
+                                animation: appearance.animation, time: time, playing: frame.isActive)
                         .id(frame.lineIndex)
                         .transition(.asymmetric(insertion: .opacity.combined(with: .offset(y: 14)), removal: .opacity))
                 } else if frame.nextLine != nil {
@@ -75,6 +78,7 @@ private struct BeamStyle: View {
 private struct CascadeStyle: View {
     let frame: LyricsFrame
     @ObservedObject var appearance: LyricsAppearance
+    let time: () -> Double?
 
     var body: some View {
         let s = appearance.scale
@@ -87,7 +91,8 @@ private struct CascadeStyle: View {
 
             Group {
                 if let line = frame.currentLine {
-                    KaraokeLine(line: line, litThrough: frame.wordIndex, fontSize: 30 * s, highlight: appearance.highlight.swiftUI)
+                    KaraokeLine(line: line, litThrough: frame.wordIndex, fontSize: 30 * s, highlight: appearance.highlight.swiftUI,
+                                animation: appearance.animation, time: time, playing: frame.isActive)
                         .id(frame.lineIndex)
                         .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity), removal: .move(edge: .top).combined(with: .opacity)))
                 } else {
@@ -130,6 +135,7 @@ private struct CascadeStyle: View {
 private struct CapsuleStyle: View {
     let frame: LyricsFrame
     @ObservedObject var appearance: LyricsAppearance
+    let time: () -> Double?
 
     var body: some View {
         let s = appearance.scale
@@ -138,7 +144,8 @@ private struct CapsuleStyle: View {
             Group {
                 if let line = frame.currentLine {
                     KaraokeLine(line: line, litThrough: frame.wordIndex, fontSize: 17 * s, highlight: appearance.highlight.swiftUI,
-                                base: .white.opacity(0.55), weight: .semibold, alignment: .leading)
+                                base: .white.opacity(0.55), weight: .semibold, alignment: .leading,
+                                animation: appearance.animation, time: time, playing: frame.isActive)
                         .id(frame.lineIndex)
                         .transition(.opacity.combined(with: .offset(y: 6)))
                 } else {

@@ -54,6 +54,7 @@ final class LyricsOverlayController {
         if appearance.accent != colors.accent { appearance.accent = colors.accent }
         if appearance.style != settings.lyricsStyle { appearance.style = settings.lyricsStyle }
         if appearance.scale != settings.lyricsScale { appearance.scale = settings.lyricsScale }
+        if appearance.animation != settings.lyricsAnimation { appearance.animation = settings.lyricsAnimation }
         if appearance.artwork !== engine.artwork { appearance.artwork = engine.artwork }
 
         let frame = presenter.frame
