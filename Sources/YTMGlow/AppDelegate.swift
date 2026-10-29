@@ -15,6 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var glow: GlowController?
     private var lyricsOverlay: LyricsOverlayController?
     private var lockScreen: LockScreenController?
+    private var stage: StageController?
     private var statusItem: StatusItemController?
     private let displayAwake = DisplayAwakeController()
     private var observers: [NSObjectProtocol] = []
@@ -32,6 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let lockScreen = LockScreenController(engine: engine, presenter: presenter, settings: settings, lockMonitor: ScreenLockMonitor(),
                                               glow: glow, appearance: lyricsOverlay.appearance)
         self.lockScreen = lockScreen
+        stage = StageController(engine: engine, presenter: presenter, settings: settings, appearance: lyricsOverlay.appearance)
         statusItem = StatusItemController(settings: settings, engine: engine, lockScreen: lockScreen, launchAtLogin: LaunchAtLogin(),
                                           extensionSetup: ExtensionSetup())
 
@@ -76,6 +78,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         glow?.screensChanged()
         lyricsOverlay?.screensChanged()
         lockScreen?.screensChanged()
+        stage?.update()
     }
 
     /// A second copy would fail to bind the bridge port; hand over to the first.

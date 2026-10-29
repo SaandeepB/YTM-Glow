@@ -31,6 +31,21 @@ log stream --level info --predicate 'subsystem == "io.github.saandeepb.ytmglow"'
 - [ ] Brave, Edge and Arc: load the extension the same way and repeat a quick play/pause/seek check.
 - [ ] Two YTM tabs: the one you most recently started playing wins.
 
+## 1b. Karaoke screen and lyric animations
+
+- [ ] Lyrics → Animation: try **Light up**, **Pop** and **Karaoke** in each style. Pop lifts the word being sung without overlapping its neighbors; Karaoke sweeps color smoothly through each word, roughly with the singing.
+- [ ] With two displays, turn on **Karaoke screen** (Automatic). Play a song with synced lyrics: the second display fills with the karaoke view within ~1 s. Your current app keeps keyboard focus.
+- [ ] The current line sweeps word by word; the next two lines are below; the footer shows art, title, artist and a moving progress bar.
+- [ ] Instrumental break (a long intro works): four dots fill up toward the next line.
+- [ ] Beat sync on: the glow behind the lyrics swells with the bass.
+- [ ] Pause: "Paused" appears and the sweep freezes; resume within 30 s and it continues. Stay paused for 30 s: the screen closes. Play again: it reopens.
+- [ ] Seek forward/back: the screen jumps to the right line.
+- [ ] Track without synced lyrics: big album art and title with "No synced lyrics…".
+- [ ] Click the karaoke screen, then press Esc: it closes and the setting turns off. Hover: the × button appears and also closes it.
+- [ ] Pick a specific display in the popover; unplug it while playing: the karaoke screen moves to another non-main display or closes. With only the built-in display and *Automatic*, it never appears.
+- [ ] Full-screen apps on the other display, and Spaces switching: the karaoke screen stays on its display.
+- [ ] Activity Monitor while the karaoke screen plays: note YTM Glow and WindowServer CPU (Karaoke redraws the current line up to 60 times a second; on the built-in display YTM Glow measured ~1.4 %).
+
 ## 2. Recovery
 
 - [ ] Quit the app while music plays, relaunch it: within ~5 s glow and lyrics return without touching the browser.

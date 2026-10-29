@@ -11,7 +11,13 @@ into light and lyrics:
 - **Synced lyrics** — the current line on screen with its words lighting up one
   at a time, in three styles: **Beam** (one big line above the Dock),
   **Cascade** (previous / current / next on a frosted card) and **Capsule** (a
-  compact pill under the menu bar).
+  compact pill under the menu bar), with three animations: **Light up**,
+  **Pop** (the sung word springs up; new lines rise in word by word) and
+  **Karaoke** (color sweeps through each word as it's sung).
+- **Karaoke screen** — a full-screen karaoke view on your second display:
+  huge lyrics with a word-by-word color sweep, the next two lines underneath,
+  a countdown through instrumental breaks, blurred album art that blooms on the
+  beat, and the track's progress.
 - **Menu bar only** — no Dock icon; one popover holds every setting.
 - **Experimental: lock screen** — optionally keeps the glow and a now-playing
   lyrics card visible over the lock screen (private macOS APIs, off by
@@ -34,6 +40,15 @@ Lyrics styles: **Beam**, **Cascade**, **Capsule**. The current word glows and th
 <img src="docs/images/lyrics-beam.png" width="700" alt="Beam style: one large line with the first four words lit">
 <img src="docs/images/lyrics-cascade.png" width="700" alt="Cascade style: lyric card with a gradient border">
 <img src="docs/images/lyrics-capsule.png" width="560" alt="Capsule style: compact pill with album art">
+
+Animations: **Pop** lifts the word being sung; **Karaoke** sweeps color through it.
+
+<img src="docs/images/animation-pop.png" width="560" alt="Pop animation: the current word lifted and glowing">
+<img src="docs/images/animation-karaoke.png" width="560" alt="Karaoke animation: color sweeping through the word being sung">
+
+The karaoke screen on a second display:
+
+<img src="docs/images/karaoke-screen.png" width="760" alt="Full-screen karaoke view: large lyric line half swept in pink, next lines below, track and progress at the bottom">
 
 <sub>Rendered offscreen by the app itself (`YTMGlow --render-previews <dir>`) with sample lyrics, so they're real views, not mockups.</sub>
 
@@ -74,9 +89,14 @@ Click the menu bar icon:
 
 - **Edge glow**: on/off, *Music sync* vs *Steady*, thickness, intensity,
   album-art vs custom colors (two color wells).
-- **Lyrics**: on/off, style (Beam / Cascade / Capsule), album-art vs custom
-  highlight color, size, a timing offset (+ shows lyrics later), and *Keep
-  display awake while playing*.
+- **Lyrics**: on/off, style (Beam / Cascade / Capsule), animation (Light up /
+  Pop / Karaoke), album-art vs custom highlight color, size, a timing offset
+  (+ shows lyrics later), and *Keep display awake while playing*.
+- **Karaoke screen**: on/off and which display (*Automatic* = the first display
+  without the menu bar; with only one display it stays off unless you pick
+  it). It opens while music plays, stays through pauses up to 30 s, and closes
+  when the music stops. Press **Esc** (click it first) or the **×** to close.
+  It never takes keyboard focus on its own.
 - **Show on lock screen** (experimental, private API).
 - **Open at login** (uses `SMAppService`; macOS may ask you to allow it in
   System Settings → General → Login Items, and the popover links there).

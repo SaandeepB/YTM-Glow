@@ -169,7 +169,8 @@ private struct LockScreenCard: View {
             }
 
             if settings.lyricsEnabled, let line = frame.currentLine {
-                KaraokeLine(line: line, litThrough: frame.wordIndex, fontSize: 30, highlight: appearance.highlight.swiftUI)
+                KaraokeLine(line: line, litThrough: frame.wordIndex, fontSize: 30, highlight: appearance.highlight.swiftUI,
+                            animation: appearance.animation, time: presenter.lyricTime, playing: frame.isActive)
                     .id(frame.lineIndex)
                     .transition(.opacity)
             } else if settings.lyricsEnabled, let next = frame.nextLine {

@@ -33,7 +33,8 @@ const userDataDir = await mkdtemp(path.join(tmpdir(), 'ytm-glow-demo-'));
 const context = await chromium.launchPersistentContext(userDataDir, {
   channel: 'chromium',
   headless: !values.headed,
-  args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
+  // Silent fake audio output keeps the beat analysis running on any audio setup.
+  args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`, '--disable-audio-output'],
 });
 await context.route('https://music.youtube.com/**', (route) => route.fulfill({ status: 200, contentType: 'text/html', body: mockHtml }));
 

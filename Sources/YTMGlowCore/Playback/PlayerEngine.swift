@@ -58,6 +58,12 @@ public final class PlayerEngine: ObservableObject {
 
     /// Audio levels from the active source, ~30 Hz. Not published, to keep SwiftUI out of the hot path.
     public var onLevels: ((LevelsMessage) -> Void)?
+    private var levelObservers: [(LevelsMessage) -> Void] = []
+
+    /// Adds another consumer of audio levels (alongside `onLevels`).
+    public func observeLevels(_ observer: @escaping (LevelsMessage) -> Void) {
+        levelObservers.append(observer)
+    }
 
     public let now: MonotonicClock
     private let lyricsProvider: LyricsProviding
@@ -137,6 +143,7 @@ public final class PlayerEngine: ObservableObject {
         case let .levels(levels):
             guard Self.sourceKey(client, levels.source) == activeSourceKey else { return }
             onLevels?(levels)
+            for observer in levelObservers { observer(levels) }
         case let .clear(source):
             sources[Self.sourceKey(client, source)] = nil
             reselect()
