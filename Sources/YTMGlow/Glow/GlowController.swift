@@ -13,7 +13,6 @@ final class GlowController {
     /// recomposite the screen edges.
     static let maxPulseRate: Double = 24
 
-    var onWantLevelsChanged: ((Bool) -> Void)?
 
     /// Experimental: while set, strips live in this above-the-lock-screen
     /// space. Windows can't be moved back out, so changing it rebuilds them.
@@ -39,7 +38,6 @@ final class GlowController {
     private var shown = false
     private var hideWork: DispatchWorkItem?
     private var stallTimer: Timer?
-    private var lastWantLevels: Bool?
     private var lastColors: (SRGBColor, SRGBColor)?
     private var alpha: CGFloat = 0
     private var lastPulseAt: TimeInterval = 0
@@ -83,12 +81,6 @@ final class GlowController {
     }
 
     func update() {
-        let wantLevels = settings.wantsLevels
-        if wantLevels != lastWantLevels {
-            lastWantLevels = wantLevels
-            onWantLevelsChanged?(wantLevels)
-        }
-
         let shouldShow = settings.glowEnabled && engine.isPlaying
         if shouldShow && !shown {
             show()

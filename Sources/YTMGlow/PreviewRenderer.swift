@@ -21,6 +21,14 @@ enum PreviewRenderer {
         }
     }
 
+    struct NoLyrics: LyricsProviding {
+        func lyrics(title: String, artist: String, album: String?, duration: Double?) async -> LyricsOutcome { .instrumental }
+    }
+
+    final class PreviewClock: @unchecked Sendable {
+        var time: TimeInterval = 1000
+    }
+
     struct SampleArtwork: ArtworkProviding {
         func load(_ url: URL) async -> (image: CGImage, palette: Palette?)? {
             let palette = Palette(primary: SRGBColor(r: 1, g: 0.42, b: 0.62), secondary: SRGBColor(r: 0.36, g: 0.62, b: 1), isMonochrome: false)
@@ -54,10 +62,19 @@ enum PreviewRenderer {
         appearance.artwork = engine.artwork
         appearance.visible = true
 
+        // A beat meter fed a simulated 120 BPM kick, stopped right on a beat.
+        let beatClock = PreviewClock()
+        let beat = BeatMeter(now: { beatClock.time })
+        for frame in 0..<90 {
+            beatClock.time += 1.0 / 30
+            let onBeat = frame % 15 >= 13
+            beat.feed(LevelsMessage(source: "preview", bass: onBeat ? 0.85 : 0.3, mid: onBeat ? 0.5 : 0.32, high: 0.22))
+        }
+
         var failures: Int32 = 0
         for (style, size) in [(LyricsStyle.beam, CGSize(width: 1100, height: 200)), (.cascade, CGSize(width: 900, height: 270)), (.capsule, CGSize(width: 760, height: 110))] {
             appearance.style = style
-            let view = LyricsOverlayView(presenter: presenter, appearance: appearance)
+            let view = LyricsOverlayView(presenter: presenter, appearance: appearance, beat: beat)
                 .environment(\.isRenderingPreview, true)
                 .frame(width: size.width, height: size.height)
                 .background(desktop)
@@ -68,7 +85,7 @@ enum PreviewRenderer {
         appearance.style = .beam
         for animation in LyricsAnimation.allCases {
             appearance.animation = animation
-            let view = LyricsOverlayView(presenter: presenter, appearance: appearance)
+            let view = LyricsOverlayView(presenter: presenter, appearance: appearance, beat: beat)
                 .environment(\.isRenderingPreview, true)
                 .frame(width: 1100, height: 200)
                 .background(desktop)
@@ -76,11 +93,37 @@ enum PreviewRenderer {
         }
 
         // The karaoke screen at 1080p.
-        let stageModel = StageModel()
-        stageModel.pulse = 0.6
-        let stage = StageView(presenter: presenter, engine: engine, appearance: appearance, stage: stageModel, onClose: {})
+        let stage = StageView(presenter: presenter, engine: engine, appearance: appearance, beat: beat, onClose: {})
             .frame(width: 1920, height: 1080)
         if !write(stage, size: CGSize(width: 1920, height: 1080), to: outputDirectory.appendingPathComponent("karaoke-screen.png")) { failures += 1 }
+
+        // A song with no lyrics: the beat visualizer in each style and on the karaoke screen.
+        let instrumental = PlayerEngine(lyrics: NoLyrics(), artwork: SampleArtwork(), now: { 1000 })
+        instrumental.lyricsDebounce = 0
+        instrumental.handle(.message(client, .state(StateMessage(
+            source: "tab-2",
+            track: TrackPayload(title: "Night Market", artist: "The Paper Moths",
+                                artwork: [ArtworkImage(src: "https://lh3.googleusercontent.com/preview2=w544-h544", sizes: "544x544")], videoId: "preview2"),
+            playback: PlaybackPayload(position: 42, duration: 200, paused: false), tap: .active))))
+        for _ in 0..<100 where !instrumental.lyricsStatus.isUnavailable || instrumental.artwork == nil {
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+        let quietPresenter = LyricsPresenter(engine: instrumental)
+        appearance.beatTrack = LyricsOverlayController.trackLine(instrumental.track!)
+        appearance.beatStatus = BeatCaption.status(instrumental.lyricsStatus)
+        for (style, size) in [(LyricsStyle.beam, CGSize(width: 1100, height: 200)), (.cascade, CGSize(width: 900, height: 270)), (.capsule, CGSize(width: 760, height: 110))] {
+            appearance.style = style
+            let view = LyricsOverlayView(presenter: quietPresenter, appearance: appearance, beat: beat)
+                .environment(\.isRenderingPreview, true)
+                .frame(width: size.width, height: size.height)
+                .background(desktop)
+            if !write(view, size: size, to: outputDirectory.appendingPathComponent("beat-\(style.rawValue).png")) { failures += 1 }
+        }
+        let quietStage = StageView(presenter: quietPresenter, engine: instrumental, appearance: appearance, beat: beat, onClose: {})
+            .frame(width: 1920, height: 1080)
+        if !write(quietStage, size: CGSize(width: 1920, height: 1080), to: outputDirectory.appendingPathComponent("karaoke-screen-beat.png")) { failures += 1 }
+        appearance.beatTrack = nil
+        appearance.style = .beam
 
         // The glow, drawn by the real GlowView over a stand-in desktop.
         let glowSize = CGSize(width: 1100, height: 620)
@@ -91,7 +134,7 @@ enum PreviewRenderer {
         if !writeLayered(glow, over: desktop, size: glowSize, to: outputDirectory.appendingPathComponent("glow.png")) { failures += 1 }
 
         let lockScreen = LockScreenController(engine: engine, presenter: presenter, settings: settings,
-                                              lockMonitor: ScreenLockMonitor(center: NotificationCenter()), glow: nil, appearance: appearance)
+                                              lockMonitor: ScreenLockMonitor(center: NotificationCenter()), glow: nil, appearance: appearance, beat: beat)
         let popover = SettingsView(settings: settings, engine: engine, lockScreen: lockScreen, launchAtLogin: LaunchAtLogin(),
                                    extensionSetup: ExtensionSetup(), onQuit: {})
             .background(Color(nsColor: .windowBackgroundColor))

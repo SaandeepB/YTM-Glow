@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let settings = AppSettings()
     private lazy var engine = PlayerEngine(lyrics: LyricsService(), artwork: ArtworkLoader())
     private lazy var presenter = LyricsPresenter(engine: engine)
+    private lazy var beat = BeatMeter(now: engine.now)
     private let server = BridgeServer(port: defaultBridgePort, appVersion: AppDelegate.appVersion)
     private var glow: GlowController?
     private var lyricsOverlay: LyricsOverlayController?
@@ -26,16 +27,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let engine = self.engine
         let glow = GlowController(engine: engine, settings: settings)
-        glow.onWantLevelsChanged = { [server] want in server.setWantLevels(want) }
         self.glow = glow
-        let lyricsOverlay = LyricsOverlayController(engine: engine, presenter: presenter, settings: settings)
+        let beat = self.beat
+        engine.observeLevels { levels in beat.feed(levels) }
+        let lyricsOverlay = LyricsOverlayController(engine: engine, presenter: presenter, settings: settings, beat: beat)
         self.lyricsOverlay = lyricsOverlay
         let lockScreen = LockScreenController(engine: engine, presenter: presenter, settings: settings, lockMonitor: ScreenLockMonitor(),
-                                              glow: glow, appearance: lyricsOverlay.appearance)
+                                              glow: glow, appearance: lyricsOverlay.appearance, beat: beat)
         self.lockScreen = lockScreen
-        stage = StageController(engine: engine, presenter: presenter, settings: settings, appearance: lyricsOverlay.appearance)
+        stage = StageController(engine: engine, presenter: presenter, settings: settings, appearance: lyricsOverlay.appearance, beat: beat)
         statusItem = StatusItemController(settings: settings, engine: engine, lockScreen: lockScreen, launchAtLogin: LaunchAtLogin(),
                                           extensionSetup: ExtensionSetup())
+
+        // Ask the extension for audio levels only while something shows them:
+        // music-sync glow, the karaoke screen, or the no-lyrics beat visualizer.
+        Publishers.MergeMany([
+            engine.$lyricsStatus.map { _ in () }.eraseToAnyPublisher(),
+            settings.objectWillChange.map { _ in () }.eraseToAnyPublisher(),
+        ])
+        .receive(on: DispatchQueue.main)
+        .sink { [weak self] in
+            guard let self else { return }
+            self.server.setWantLevels(self.settings.wantsLevels(lyricsUnavailable: self.engine.lyricsStatus.isUnavailable))
+        }
+        .store(in: &subscriptions)
 
         // Keep the display awake only while music actually plays.
         Publishers.MergeMany([
