@@ -5,6 +5,7 @@ import YTMGlowCore
 struct SettingsView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var engine: PlayerEngine
+    @ObservedObject var lockScreen: LockScreenController
     var extensionSetup: ExtensionSetup
     var onQuit: () -> Void
 
@@ -14,6 +15,7 @@ struct SettingsView: View {
             NowPlayingCard(engine: engine)
             GlowSection(settings: settings, engine: engine)
             LyricsSection(settings: settings, engine: engine)
+            ExperimentalSection(settings: settings, lockScreen: lockScreen)
             GeneralSection(extensionSetup: extensionSetup, onQuit: onQuit)
         }
         .padding(16)
@@ -217,6 +219,9 @@ private struct LyricsSection: View {
             }
             .font(.caption)
 
+            Toggle("Keep display awake while playing", isOn: $settings.keepDisplayAwake)
+                .font(.caption)
+
             if case .failed = engine.lyricsStatus {
                 Button("Retry lyrics lookup") { engine.retryLyrics() }.font(.caption)
             }
@@ -227,6 +232,34 @@ private struct LyricsSection: View {
         let rounded = (settings.lyricsOffset * 10).rounded() / 10
         if rounded == 0 { return "0.0 s" }
         return String(format: "%+.1f s", rounded)
+    }
+}
+
+private struct ExperimentalSection: View {
+    @ObservedObject var settings: AppSettings
+    @ObservedObject var lockScreen: LockScreenController
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Toggle(isOn: $settings.lockScreenEnabled) {
+                Label("Show on lock screen", systemImage: "lock.display").font(.system(size: 12, weight: .semibold))
+            }
+            Text(caption)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(.orange.opacity(0.45), style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
+    }
+
+    private var caption: String {
+        switch lockScreen.status {
+        case let .unsupported(reason): return "Not available on this macOS (\(reason))."
+        case .showing: return "Showing on the lock screen now."
+        default: return "Experimental. Uses private macOS APIs and may stop working after an update."
+        }
     }
 }
 

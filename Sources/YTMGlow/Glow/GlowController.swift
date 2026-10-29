@@ -15,6 +15,15 @@ final class GlowController {
 
     var onWantLevelsChanged: ((Bool) -> Void)?
 
+    /// Experimental: while set, strips live in this above-the-lock-screen
+    /// space. Windows can't be moved back out, so changing it rebuilds them.
+    var lockScreenSpace: SkyLightSpace? {
+        didSet {
+            guard lockScreenSpace !== oldValue else { return }
+            rebuildStrips()
+        }
+    }
+
     private let engine: PlayerEngine
     private let settings: AppSettings
     private struct Strip {
@@ -129,8 +138,27 @@ final class GlowController {
             view.autoresizingMask = [.width, .height]
             window.contentView = view
             if let colors = lastColors { view.setColors(colors.0, colors.1, animated: false) }
+            if let space = lockScreenSpace {
+                window.canBecomeVisibleWithoutLogin = true
+                space.adopt(windowNumber: window.windowNumber)
+            }
             return Strip(window: window, view: view)
         }
+    }
+
+    /// Replaces every strip window (used when moving into or out of the lock-screen space).
+    private func rebuildStrips() {
+        for strip in strips {
+            strip.window.orderOut(nil)
+            strip.window.close()
+        }
+        displays.removeAll()
+        guard shown else { return }
+        for screen in NSScreen.screens {
+            displays[screen.displayID] = makeStrips(for: screen)
+        }
+        layoutStrips()
+        for strip in strips { strip.window.orderFrontRegardless() }
     }
 
     /// Sizes strip windows for the current thickness and display geometry.
