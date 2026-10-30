@@ -52,6 +52,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         .store(in: &subscriptions)
 
+        // Preferred lyrics script (e.g. Telugu vs English letters).
+        engine.preferredLyricsScript = settings.preferredLyricsScript
+        settings.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                guard let self else { return }
+                self.engine.preferredLyricsScript = self.settings.preferredLyricsScript
+            }
+            .store(in: &subscriptions)
+
         // Keep the display awake only while music actually plays.
         Publishers.MergeMany([
             engine.$clock.map { _ in () }.eraseToAnyPublisher(),

@@ -76,6 +76,9 @@ final class AppSettings: ObservableObject {
     @Published var lyricsOffset: Double { didSet { defaults.set(lyricsOffset, forKey: Key.lyricsOffset) } }
     /// Text size multiplier.
     @Published var lyricsScale: Double { didSet { defaults.set(lyricsScale, forKey: Key.lyricsScale) } }
+    /// Preferred lyrics script: "any" or a `LyricsScript` raw value (e.g. "telugu", "latin").
+    @Published var lyricsScript: String { didSet { defaults.set(lyricsScript, forKey: Key.lyricsScript) } }
+    var preferredLyricsScript: LyricsScript? { LyricsScript(rawValue: lyricsScript) }
     /// Show a pulsing beat visualizer where lyrics would be when a song has none.
     @Published var beatWhenNoLyrics: Bool { didSet { defaults.set(beatWhenNoLyrics, forKey: Key.beatWhenNoLyrics) } }
     @Published var lyricsAnimation: LyricsAnimation { didSet { defaults.set(lyricsAnimation.rawValue, forKey: Key.lyricsAnimation) } }
@@ -106,6 +109,7 @@ final class AppSettings: ObservableObject {
             Key.lyricsScale: 1.0,
             Key.lyricsAnimation: LyricsAnimation.pop.rawValue,
             Key.beatWhenNoLyrics: true,
+            Key.lyricsScript: "any",
             Key.stageEnabled: false,
             Key.stageDisplayID: 0,
             Key.keepDisplayAwake: false,
@@ -125,6 +129,7 @@ final class AppSettings: ObservableObject {
         lyricsOffset = defaults.double(forKey: Key.lyricsOffset)
         lyricsScale = defaults.double(forKey: Key.lyricsScale)
         beatWhenNoLyrics = defaults.bool(forKey: Key.beatWhenNoLyrics)
+        lyricsScript = defaults.string(forKey: Key.lyricsScript) ?? "any"
         lyricsAnimation = LyricsAnimation(rawValue: defaults.string(forKey: Key.lyricsAnimation) ?? "") ?? .pop
         stageEnabled = defaults.bool(forKey: Key.stageEnabled)
         stageDisplayID = UInt32(clamping: defaults.integer(forKey: Key.stageDisplayID))
@@ -154,6 +159,7 @@ final class AppSettings: ObservableObject {
         static let lyricsScale = "lyrics.scale"
         static let lyricsAnimation = "lyrics.animation"
         static let beatWhenNoLyrics = "lyrics.beatWhenMissing"
+        static let lyricsScript = "lyrics.script"
         static let stageEnabled = "stage.enabled"
         static let stageDisplayID = "stage.displayID"
         static let keepDisplayAwake = "display.keepAwake"

@@ -16,13 +16,26 @@ enum PreviewRenderer {
     """
 
     struct SampleLyrics: LyricsProviding {
-        func lyrics(title: String, artist: String, album: String?, duration: Double?) async -> LyricsOutcome {
+        func lyrics(title: String, artist: String, album: String?, duration: Double?, script: LyricsScript?) async -> LyricsOutcome {
             Lyrics(lrc: PreviewRenderer.sampleLRC, songDuration: duration).map { .synced($0) } ?? .notFound
         }
     }
 
+    /// Original Telugu phrases (not song lyrics) to check Indic rendering.
+    nonisolated static let teluguLRC = """
+    [00:10.00]చల్లని గాలి నది మీద పాట పాడింది
+    [00:14.50]వెన్నెల వెలుగులో దీపాలు మెరిశాయి
+    [00:19.00]రాత్రంతా మనసు నిండా సంగీతం
+    """
+
+    struct TeluguLyrics: LyricsProviding {
+        func lyrics(title: String, artist: String, album: String?, duration: Double?, script: LyricsScript?) async -> LyricsOutcome {
+            Lyrics(lrc: PreviewRenderer.teluguLRC, songDuration: duration).map { .synced($0) } ?? .notFound
+        }
+    }
+
     struct NoLyrics: LyricsProviding {
-        func lyrics(title: String, artist: String, album: String?, duration: Double?) async -> LyricsOutcome { .instrumental }
+        func lyrics(title: String, artist: String, album: String?, duration: Double?, script: LyricsScript?) async -> LyricsOutcome { .instrumental }
     }
 
     final class PreviewClock: @unchecked Sendable {
@@ -124,6 +137,31 @@ enum PreviewRenderer {
         if !write(quietStage, size: CGSize(width: 1920, height: 1080), to: outputDirectory.appendingPathComponent("karaoke-screen-beat.png")) { failures += 1 }
         appearance.beatTrack = nil
         appearance.style = .beam
+
+        // Telugu script: Beam with the karaoke sweep, and the karaoke screen.
+        let teluguEngine = PlayerEngine(lyrics: TeluguLyrics(), artwork: SampleArtwork(), now: { 1000 })
+        teluguEngine.lyricsDebounce = 0
+        teluguEngine.handle(.message(client, .state(StateMessage(
+            source: "tab-3",
+            track: TrackPayload(title: "Nadi Meeda", artist: "Preview Singer", album: "Preview (Telugu)",
+                                artwork: [ArtworkImage(src: "https://lh3.googleusercontent.com/preview3=w544-h544", sizes: "544x544")], videoId: "preview3"),
+            playback: PlaybackPayload(position: 12.1, duration: 200, paused: false), tap: .active))))
+        for _ in 0..<100 where teluguEngine.lyricsStatus.lyrics == nil || teluguEngine.artwork == nil {
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+        let teluguPresenter = LyricsPresenter(engine: teluguEngine)
+        teluguPresenter.refresh()
+        appearance.style = .beam
+        appearance.animation = .karaoke
+        let teluguBeam = LyricsOverlayView(presenter: teluguPresenter, appearance: appearance, beat: beat)
+            .environment(\.isRenderingPreview, true)
+            .frame(width: 1100, height: 200)
+            .background(desktop)
+        if !write(teluguBeam, size: CGSize(width: 1100, height: 200), to: outputDirectory.appendingPathComponent("telugu-beam.png")) { failures += 1 }
+        let teluguStage = StageView(presenter: teluguPresenter, engine: teluguEngine, appearance: appearance, beat: beat, onClose: {})
+            .frame(width: 1920, height: 1080)
+        if !write(teluguStage, size: CGSize(width: 1920, height: 1080), to: outputDirectory.appendingPathComponent("telugu-karaoke-screen.png")) { failures += 1 }
+        appearance.animation = .pop
 
         // The glow, drawn by the real GlowView over a stand-in desktop.
         let glowSize = CGSize(width: 1100, height: 620)
