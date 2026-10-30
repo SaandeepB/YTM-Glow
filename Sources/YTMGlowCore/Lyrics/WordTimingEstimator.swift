@@ -130,24 +130,42 @@ public enum SyllableCounter {
         for character in lower where isUnspacedScript(character) { unspaced += 1 }
         if unspaced > 0 || hangul > 0 { return Double(unspaced + hangul) }
 
+        // Indian scripts: one beat per akshara (grapheme cluster); a cluster
+        // ending in a virama is a dead consonant and gets half a beat.
+        let aksharas = lower.filter { character in
+            character.unicodeScalars.contains { LyricsScript.of($0)?.isIndic == true }
+        }
+        if !aksharas.isEmpty {
+            let beats = aksharas.reduce(0.0) { total, character in
+                total + (character.unicodeScalars.last.map(isVirama) == true ? 0.5 : 1)
+            }
+            return max(1, beats)
+        }
+
         let letters = lower.filter(\.isLetter)
         guard !letters.isEmpty else {
             // Numbers and symbols: a beat per digit group, at least a short one.
             return lower.contains(where: \.isNumber) ? Double(max(1, lower.filter(\.isNumber).count)) : 0.5
         }
 
-        var groups = 0
+        var groups = 0.0
         var previousWasVowel = false
         for character in letters {
             let isVowel = vowels.contains(character)
             if isVowel && !previousWasVowel { groups += 1 }
             previousWasVowel = isVowel
         }
-        // Silent trailing "e" in English ("love", "time"), but not "-le" ("little").
+        // Trailing "e": silent in English ("love", "time") but sung in romanized
+        // Indian lyrics ("suttukunte", "roje"), so only take off half a beat.
         if groups > 1, letters.hasSuffix("e"), !letters.hasSuffix("le"), !letters.hasSuffix("ee") {
-            groups -= 1
+            groups -= 0.5
         }
-        return Double(max(1, groups))
+        return max(1, groups)
+    }
+
+    /// Virama (halant / pulli) in each Indian script.
+    static func isVirama(_ scalar: Unicode.Scalar) -> Bool {
+        [0x094D, 0x09CD, 0x0A4D, 0x0ACD, 0x0B4D, 0x0BCD, 0x0C4D, 0x0CCD, 0x0D4D].contains(scalar.value)
     }
 
     /// Han ideographs, kana, and Thai: scripts usually written without spaces.

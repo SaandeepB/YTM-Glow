@@ -8,12 +8,16 @@ public struct CleanedTrack: Equatable, Sendable {
     /// The first credited artist; LRCLIB usually files songs under it.
     public var primaryArtist: String
     public var album: String?
+    /// Indian language named in the title or album ("Pushpa (Telugu)"), used to
+    /// pick the right language version of multi-language film songs.
+    public var language: IndianLanguage?
 
-    public init(title: String, artist: String, primaryArtist: String, album: String?) {
+    public init(title: String, artist: String, primaryArtist: String, album: String?, language: IndianLanguage? = nil) {
         self.title = title
         self.artist = artist
         self.primaryArtist = primaryArtist
         self.album = album
+        self.language = language
     }
 }
 
@@ -27,6 +31,8 @@ public enum TrackNameCleaner {
         "clean", "color coded", "colour coded", "music video", "performance video",
         "full song", "sub español", "subtitulado", "legendado", "letra",
         "feat", "feat.", "ft", "ft.", "featuring", "with", "prod", "prod.",
+        // Indian film-song uploads.
+        "lyrical", "video song", "full video", "audio song", "full audio",
     ]
 
     public static func clean(title: String, artist: String, album: String?) -> CleanedTrack {
@@ -48,17 +54,38 @@ public enum TrackNameCleaner {
 
         var cleanAlbum = album?.trimmingCharacters(in: .whitespacesAndNewlines)
         if cleanAlbum?.isEmpty == true { cleanAlbum = nil }
-        return CleanedTrack(title: cleanTitle, artist: cleanArtist, primaryArtist: primary, album: cleanAlbum)
+        let language = IndianLanguage.hint(in: [album, title])
+        return CleanedTrack(title: cleanTitle, artist: cleanArtist, primaryArtist: primary, album: cleanAlbum, language: language)
     }
 
     public static func cleanTitleText(_ title: String) -> String {
         var text = title
+        // "Song | Movie | Actor | Composer" uploads: the song is the first part.
+        if let range = text.range(of: #"\s*[|｜]\s*"#, options: .regularExpression), range.lowerBound > text.startIndex {
+            text = String(text[..<range.lowerBound])
+        }
         // Drop noisy (...) and [...] segments; keep meaningful ones like "(Acoustic)".
         for (open, close) in [("(", ")"), ("[", "]"), ("【", "】"), ("「", "」")] {
             text = removeBracketed(text, open: open, close: close) { inner in
-                let lower = inner.lowercased()
+                let lower = inner.lowercased().trimmingCharacters(in: .whitespaces)
                 return noiseWords.contains { word in containsWord(lower, word) }
+                    || isFromMovie(lower) || isLanguageTag(lower)
             }
+        }
+        // Unbracketed upload suffixes: "Full Video Song", "Lyrical Video", "- Video".
+        for pattern in [#"\s+(full\s+)?(lyrical\s+video|video\s+song|audio\s+song|lyrical)$"#,
+                        #"\s+[-–—]\s+(full\s+)?(lyrical|video|audio)(\s+video)?(\s+song)?$"#] {
+            if let range = text.range(of: pattern, options: [.regularExpression, .caseInsensitive]) {
+                text.removeSubrange(range)
+            }
+        }
+        // Indian film songs: 'Song - From "Movie"' and 'Song - Telugu'.
+        if let range = text.range(of: #"\s+[-–—]\s+from\s+["“'‘].*$"#, options: [.regularExpression, .caseInsensitive]) {
+            text.removeSubrange(range)
+        }
+        if let range = text.range(of: #"\s+[-–—]\s+(\p{L}+)(\s+version)?$"#, options: .regularExpression),
+           isLanguageTag(text[range].trimmingCharacters(in: CharacterSet(charactersIn: " -–—")).lowercased()) {
+            text.removeSubrange(range)
         }
         // Trailing "feat. X" / "ft. X" without brackets.
         if let range = text.range(of: #"\s+(feat\.?|ft\.?|featuring)\s+.*$"#, options: [.regularExpression, .caseInsensitive]) {
@@ -66,10 +93,6 @@ public enum TrackNameCleaner {
         }
         // Trailing " - Remastered 2011" / " - Mono" release notes.
         if let range = text.range(of: #"\s+[-–—]\s+(\d{4}\s+)?(remaster(ed)?|mono|stereo)(\s+\d{4})?(\s+(version|mix))?$"#, options: [.regularExpression, .caseInsensitive]) {
-            text.removeSubrange(range)
-        }
-        // Trailing "| Official Video" style suffixes.
-        if let range = text.range(of: #"\s*[|｜]\s*.*(official|video|audio|lyric).*$"#, options: [.regularExpression, .caseInsensitive]) {
             text.removeSubrange(range)
         }
         return collapseSpaces(text).trimmingCharacters(in: CharacterSet(charactersIn: " -–—|"))
@@ -109,6 +132,18 @@ public enum TrackNameCleaner {
     static func fuzzyEqual(_ a: String, _ b: String) -> Bool {
         let left = normalizeKey(a)
         return !left.isEmpty && left == normalizeKey(b)
+    }
+
+    /// `From "Movie"`, the way YouTube Music credits film songs.
+    static func isFromMovie(_ inner: String) -> Bool {
+        inner.range(of: #"^from\s+["“'‘]"#, options: .regularExpression) != nil
+    }
+
+    /// "telugu", "tamil version", "hindi song"…
+    static func isLanguageTag(_ inner: String) -> Bool {
+        let words = inner.split(separator: " ").map(String.init)
+        guard let first = words.first, IndianLanguage.allNames.contains(first) else { return false }
+        return words.dropFirst().allSatisfy { ["version", "song", "lyrics", "ver", "ver."].contains($0) }
     }
 
     private static func splitArtistTitle(_ title: String) -> (artist: String, title: String)? {
