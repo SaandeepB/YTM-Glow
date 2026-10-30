@@ -234,6 +234,20 @@ private struct LyricsSection: View {
             }
             .font(.caption)
 
+            HStack(spacing: 8) {
+                Text("Script").frame(width: 64, alignment: .leading)
+                Picker("Script", selection: $settings.lyricsScript) {
+                    Text("Any").tag("any")
+                    ForEach(LyricsScript.allCases, id: \.rawValue) { script in
+                        Text(script.label).tag(script.rawValue)
+                    }
+                }
+                .labelsHidden()
+                Spacer(minLength: 0)
+            }
+            .font(.caption)
+            .help("Which writing to prefer when a song's lyrics exist in several, e.g. తెలుగు script or English letters. Also picks the right language version of film songs released in several languages.")
+
             SwitchRow(title: "Beat animation when there are no lyrics", isOn: $settings.beatWhenNoLyrics)
             SwitchRow(title: "Keep display awake while playing", isOn: $settings.keepDisplayAwake)
 

@@ -61,7 +61,8 @@ public enum LyricsLookupError: Error, Equatable {
 }
 
 public protocol LyricsLookup: Sendable {
-    func lookup(_ track: CleanedTrack, duration: Double?) async throws -> LyricsLookupResult
+    /// - Parameter script: preferred writing system for the lyrics, or nil for any.
+    func lookup(_ track: CleanedTrack, duration: Double?, script: LyricsScript?) async throws -> LyricsLookupResult
 }
 
 /// Client for https://lrclib.net (free, no API key).
@@ -88,17 +89,27 @@ public struct LRCLibClient: LyricsLookup {
     }
 
     public func lookup(_ track: CleanedTrack, duration: Double?) async throws -> LyricsLookupResult {
+        try await lookup(track, duration: duration, script: nil)
+    }
+
+    /// - Parameter script: the writing system the user prefers for lyrics
+    ///   (e.g. Telugu script vs English letters); nil for no preference.
+    public func lookup(_ track: CleanedTrack, duration: Double?, script preferred: LyricsScript?) async throws -> LyricsLookupResult {
         let roundedDuration = duration.flatMap { $0.isFinite && $0 > 0 ? Int($0.rounded()) : nil }
         var sawPlain = false
         var sawInstrumental = false
+        var best: (record: LRCLibRecord, score: Double)?
 
-        func consider(_ record: LRCLibRecord?) -> LyricsLookupResult? {
-            guard let record else { return nil }
-            if record.hasSynced { return .synced(lrc: record.syncedLyrics!, recordID: record.id) }
+        func note(_ record: LRCLibRecord) {
             if record.instrumental == true { sawInstrumental = true }
             if record.hasPlain { sawPlain = true }
-            return nil
         }
+        func consider(_ record: LRCLibRecord, exact: Bool) {
+            guard let score = Self.score(record, for: track, duration: exact ? nil : duration, preferred: preferred, exact: exact) else { return }
+            if best == nil || score < best!.score { best = (record, score) }
+        }
+        /// A candidate in the right script with matching names and duration.
+        var goodEnough: Bool { (best?.score ?? .infinity) <= Self.goodEnoughScore }
 
         // 1. Exact signature match, then looser variants.
         var attempts: [(artist: String, album: String?)] = [(track.artist, track.album)]
@@ -108,35 +119,53 @@ public struct LRCLibClient: LyricsLookup {
             var query = [URLQueryItem(name: "track_name", value: track.title), URLQueryItem(name: "artist_name", value: attempt.artist)]
             if let album = attempt.album { query.append(URLQueryItem(name: "album_name", value: album)) }
             if let roundedDuration { query.append(URLQueryItem(name: "duration", value: String(roundedDuration))) }
-            if let found = consider(try await getRecord(query)) { return found }
+            guard let record = try await getRecord(query) else { continue }
+            note(record)
+            consider(record, exact: true)
+            if goodEnough { break }
         }
 
-        // 2. Search, picking the closest duration with synced lyrics.
-        let searches: [[URLQueryItem]] = [
+        // 2. Searches, from precise to broad. Multi-language film songs share a
+        //    title across versions, so when the right script hasn't turned up,
+        //    also search by language name and by album.
+        var searches: [[URLQueryItem]] = [
             [URLQueryItem(name: "track_name", value: track.title), URLQueryItem(name: "artist_name", value: track.primaryArtist)],
             [URLQueryItem(name: "q", value: "\(track.title) \(track.primaryArtist)")],
         ]
-        for query in searches {
-            let records = try await search(query)
-            if let best = Self.bestMatch(records, for: track, duration: duration) {
-                return .synced(lrc: best.syncedLyrics!, recordID: best.id)
+        let target = preferred?.isIndic == true ? preferred : track.language?.script
+        if let name = target?.searchName {
+            searches.append([URLQueryItem(name: "q", value: "\(track.title) \(name)")])
+            if let album = track.album {
+                let movie = TrackNameCleaner.cleanTitleText(album)
+                if !movie.isEmpty { searches.append([URLQueryItem(name: "q", value: "\(track.title) \(movie)")]) }
             }
-            for record in records where Self.namesMatch(record, track) {
-                if record.instrumental == true { sawInstrumental = true }
-                if record.hasPlain { sawPlain = true }
+        }
+        for query in searches where !goodEnough {
+            let records = try await search(query)
+            for record in records {
+                consider(record, exact: false)
+                if Self.namesMatch(record, track) { note(record) }
             }
         }
 
+        if let best { return .synced(lrc: best.record.syncedLyrics!, recordID: best.record.id) }
         if sawInstrumental { return .instrumental }
         if sawPlain { return .plainOnly }
         return .notFound
     }
 
-    /// Closest-duration record with synced lyrics, preferring matching names.
-    public static func bestMatch(_ records: [LRCLibRecord], for track: CleanedTrack, duration: Double?) -> LRCLibRecord? {
-        let candidates = records.filter(\.hasSynced)
-        func score(_ record: LRCLibRecord) -> Double? {
-            var penalty = namesMatch(record, track) ? 0.0 : 6.0
+    /// Scores at or below this stop the lookup early.
+    static let goodEnoughScore = 3.0
+
+    /// Lower is better; nil means unusable. Combines name match, duration
+    /// distance and script fit. Lyrics in a different Indian script than the
+    /// language in the track's metadata are another language's version and
+    /// are never used.
+    static func score(_ record: LRCLibRecord, for track: CleanedTrack, duration: Double?, preferred: LyricsScript?, exact: Bool) -> Double? {
+        guard record.hasSynced else { return nil }
+        var penalty = 0.0
+        if !exact {
+            penalty += namesMatch(record, track) ? 0 : 6
             if let duration, duration > 0 {
                 guard let recordDuration = record.duration else { return nil }
                 let delta = abs(recordDuration - duration)
@@ -145,10 +174,30 @@ public struct LRCLibClient: LyricsLookup {
             } else if penalty > 0 {
                 return nil
             }
-            return penalty
         }
-        return candidates
-            .compactMap { record in score(record).map { (record, $0) } }
+        guard let script = scriptPenalty(LyricsScript.dominant(in: record.syncedLyrics ?? ""), language: track.language, preferred: preferred) else {
+            return nil
+        }
+        return penalty + script
+    }
+
+    /// 0 = fits; nil = wrong language version.
+    static func scriptPenalty(_ script: LyricsScript?, language: IndianLanguage?, preferred: LyricsScript?) -> Double? {
+        guard let script else { return 0 }
+        if let language, script.isIndic, script != language.script { return nil }
+        // With no explicit preference, the metadata's language script is the target.
+        guard let target = preferred ?? language?.script else { return 0 }
+        if script == target { return 0 }
+        // Another Indian script than wanted: probably another language's version.
+        if script.isIndic && target.isIndic { return 8 }
+        // Romanized vs. native script: same song, just not the preferred writing.
+        return preferred == nil ? 0 : 4
+    }
+
+    /// Best synced record from a search result (used by tests and the lookup).
+    public static func bestMatch(_ records: [LRCLibRecord], for track: CleanedTrack, duration: Double?, script: LyricsScript? = nil) -> LRCLibRecord? {
+        records
+            .compactMap { record in score(record, for: track, duration: duration, preferred: script, exact: false).map { (record, $0) } }
             .min { $0.1 < $1.1 }?
             .0
     }

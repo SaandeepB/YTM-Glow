@@ -3,7 +3,7 @@ import CoreGraphics
 import Foundation
 
 public protocol LyricsProviding: Sendable {
-    func lyrics(title: String, artist: String, album: String?, duration: Double?) async -> LyricsOutcome
+    func lyrics(title: String, artist: String, album: String?, duration: Double?, script: LyricsScript?) async -> LyricsOutcome
 }
 
 extension LyricsService: LyricsProviding {}
@@ -45,6 +45,11 @@ public final class PlayerEngine: ObservableObject {
     public var staleAfter: TimeInterval = 6
     /// Wait for the new track's duration to settle before looking up lyrics.
     public var lyricsDebounce: TimeInterval = 0.6
+    /// Preferred writing system for lyrics (e.g. Telugu script or English
+    /// letters); nil for no preference. Changing it looks the lyrics up again.
+    public var preferredLyricsScript: LyricsScript? {
+        didSet { if preferredLyricsScript != oldValue { retryLyrics() } }
+    }
 
     @Published public private(set) var bridgeStatus: BridgeStatus = .starting
     @Published public private(set) var clients: [BridgeClientID: HelloMessage] = [:]
@@ -214,7 +219,8 @@ public final class PlayerEngine: ObservableObject {
             }
             guard !Task.isCancelled, let self else { return }
             let duration = self.clock?.duration
-            let outcome = await lyricsProvider.lyrics(title: track.title, artist: track.artist, album: track.album, duration: duration)
+            let outcome = await lyricsProvider.lyrics(title: track.title, artist: track.artist, album: track.album, duration: duration,
+                                                      script: self.preferredLyricsScript)
             guard !Task.isCancelled, self.trackKey == key else { return }
             Log.lyrics.info("Lyrics for \(track.title, privacy: .public): \(String(describing: outcome).prefix(60), privacy: .public)")
             switch outcome {

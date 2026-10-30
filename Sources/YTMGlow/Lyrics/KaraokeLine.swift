@@ -17,7 +17,9 @@ struct WordFlow: Layout {
         let rows = arrange(width: proposal.width ?? .infinity, subviews: subviews)
         let width = rows.map(\.width).max() ?? 0
         let height = rows.map(\.height).reduce(0, +) + lineSpacing * CGFloat(max(0, rows.count - 1))
-        return CGSize(width: min(width, proposal.width ?? width), height: height)
+        // Round up: the frame we get back is pixel-aligned, and losing a
+        // fraction of a point would wrap a line that exactly fits.
+        return CGSize(width: ceil(min(width, proposal.width ?? width)), height: ceil(height))
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
@@ -53,7 +55,8 @@ struct WordFlow: Layout {
             let size = subview.sizeThatFits(.unspecified)
             let gap = subview[WordGap.self]
             let previousGap = row.items.last?.gap ?? 0
-            if !row.items.isEmpty, row.width + previousGap + size.width > maxWidth {
+            // Half a point of slack absorbs pixel rounding of our bounds.
+            if !row.items.isEmpty, row.width + previousGap + size.width > maxWidth + 0.5 {
                 rows.append(row)
                 row = Row()
             }
@@ -103,13 +106,17 @@ struct KaraokeLine: View {
 
     private func words(fills: [Double]?) -> some View {
         let rightToLeft = Self.isRightToLeft(line.text)
+        // Indian scripts draw vowel signs and stacked consonants above and below
+        // the font's line box; give wrapped rows room so they don't collide.
+        let indic = LyricsScript.dominant(in: line.text)?.isIndic == true
         let font = Font.system(size: fontSize, weight: weight, design: .rounded)
-        return WordFlow(lineSpacing: fontSize * 0.12, alignment: alignment, rightToLeft: rightToLeft) {
+        return WordFlow(lineSpacing: fontSize * (indic ? 0.3 : 0.12), alignment: alignment, rightToLeft: rightToLeft) {
             ForEach(Array(line.words.enumerated()), id: \.offset) { index, word in
                 let fill = fills.map { index < $0.count ? $0[index] : 0 }
                 let lit = fill.map { $0 >= 1 } ?? (litThrough.map { index <= $0 } ?? false)
                 let current = fill.map { $0 > 0 && $0 < 1 } ?? (litThrough == index)
                 wordView(word.text, index: index, font: font, lit: lit, current: current, fill: fill, rightToLeft: rightToLeft)
+                    .padding(.vertical, indic ? fontSize * 0.08 : 0)
                     .layoutValue(key: WordGap.self, value: word.spaceAfter ? fontSize * 0.27 : 0)
             }
         }

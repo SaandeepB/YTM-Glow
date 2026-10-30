@@ -27,11 +27,11 @@ public final class LyricsCache: @unchecked Sendable {
         return caches.appendingPathComponent("YTMGlow/lyrics", isDirectory: true)
     }
 
-    public static func key(for track: CleanedTrack, duration: Double?) -> String {
+    public static func key(for track: CleanedTrack, duration: Double?, script: LyricsScript? = nil) -> String {
         let seconds = duration.map { String(Int($0.rounded())) } ?? "?"
         return [track.title, track.primaryArtist, track.album ?? ""]
             .map(TrackNameCleaner.normalizeKey)
-            .joined(separator: "|") + "|" + seconds
+            .joined(separator: "|") + "|" + seconds + (script.map { "|" + $0.rawValue } ?? "")
     }
 
     public func read(_ key: String) -> LyricsLookupResult? {
@@ -82,17 +82,17 @@ public final class LyricsService: Sendable {
         self.cache = cache
     }
 
-    public func lyrics(title: String, artist: String, album: String?, duration: Double?) async -> LyricsOutcome {
+    public func lyrics(title: String, artist: String, album: String?, duration: Double?, script: LyricsScript? = nil) async -> LyricsOutcome {
         let track = TrackNameCleaner.clean(title: title, artist: artist, album: album)
         guard !track.title.isEmpty else { return .notFound }
-        let key = LyricsCache.key(for: track, duration: duration)
+        let key = LyricsCache.key(for: track, duration: duration, script: script)
 
         let result: LyricsLookupResult
         if let cached = cache?.read(key) {
             result = cached
         } else {
             do {
-                result = try await lookup.lookup(track, duration: duration)
+                result = try await lookup.lookup(track, duration: duration, script: script)
             } catch is CancellationError {
                 return .failed("cancelled")
             } catch {
