@@ -58,6 +58,14 @@ log stream --level info --predicate 'subsystem == "io.github.saandeepb.ytmglow"'
 - [ ] Turn off "Beat animation when there are no lyrics": nothing is shown for those songs.
 - [ ] Glow on Steady and karaoke screen off: the extension popup says "Beat sync on" only while a no-lyrics song plays, and goes back to off for songs with lyrics.
 
+## 1d. Telugu and other Indian songs
+
+- [ ] Play a popular Telugu film song (e.g. from RRR, Pushpa, Ala Vaikunthapurramuloo). Synced lyrics appear in Telugu script or romanized, never in Tamil/Hindi/Kannada script.
+- [ ] A song released in several languages (e.g. "Srivalli"): play the Telugu version. The lyrics are Telugu (or romanized), not the Tamil version. Repeat with the Tamil or Hindi version if you have it.
+- [ ] Popover → Lyrics → Script → తెలుగు: the current song re-looks-up and shows Telugu script when LRCLIB has it; English letters → romanized when available.
+- [ ] Telugu script renders cleanly in Beam, Cascade, Capsule, the karaoke screen and the lock-screen card: vowel signs and stacked consonants aren't clipped, wrapped lines don't overlap the next line, and the Karaoke sweep moves through each word.
+- [ ] A song with no lyrics on LRCLIB (many regional or older tracks): the beat visualizer shows instead.
+
 ## 2. Recovery
 
 - [ ] Quit the app while music plays, relaunch it: within ~5 s glow and lyrics return without touching the browser.
