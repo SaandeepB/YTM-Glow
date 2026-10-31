@@ -47,7 +47,7 @@ enum Fixtures {
 struct FakeLyricsProvider: LyricsProviding {
     var lrcByTitle: [String: String]
 
-    func lyrics(title: String, artist: String, album: String?, duration: Double?, script: LyricsScript?) async -> LyricsOutcome {
+    func lyrics(title: String, artist: String, album: String?, duration: Double?, preference: LyricsPreference) async -> LyricsOutcome {
         guard let lrc = lrcByTitle[title], let lyrics = Lyrics(lrc: lrc, songDuration: duration) else { return .notFound }
         return .synced(lyrics)
     }

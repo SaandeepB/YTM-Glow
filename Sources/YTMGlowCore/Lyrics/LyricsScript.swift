@@ -91,6 +91,9 @@ public enum IndianLanguage: String, CaseIterable, Sendable {
         }
     }
 
+    /// English name for settings.
+    public var displayName: String { rawValue.prefix(1).uppercased() + rawValue.dropFirst() }
+
     var names: [String] {
         switch self {
         case .bengali: return ["bengali", "bangla"]

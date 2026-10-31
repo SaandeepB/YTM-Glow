@@ -61,8 +61,7 @@ public enum LyricsLookupError: Error, Equatable {
 }
 
 public protocol LyricsLookup: Sendable {
-    /// - Parameter script: preferred writing system for the lyrics, or nil for any.
-    func lookup(_ track: CleanedTrack, duration: Double?, script: LyricsScript?) async throws -> LyricsLookupResult
+    func lookup(_ track: CleanedTrack, duration: Double?, preference: LyricsPreference) async throws -> LyricsLookupResult
 }
 
 /// Client for https://lrclib.net (free, no API key).
@@ -92,9 +91,17 @@ public struct LRCLibClient: LyricsLookup {
         try await lookup(track, duration: duration, script: nil)
     }
 
-    /// - Parameter script: the writing system the user prefers for lyrics
-    ///   (e.g. Telugu script vs English letters); nil for no preference.
-    public func lookup(_ track: CleanedTrack, duration: Double?, script preferred: LyricsScript?) async throws -> LyricsLookupResult {
+    public func lookup(_ track: CleanedTrack, duration: Double?, preference: LyricsPreference) async throws -> LyricsLookupResult {
+        try await lookup(track, duration: duration, script: preference.preferredScript, userLanguage: preference.language)
+    }
+
+    /// - Parameters:
+    ///   - script: the writing system the user prefers for lyrics (e.g. Telugu
+    ///     script vs English letters); nil for no preference.
+    ///   - userLanguage: the listener's language, a soft hint for which
+    ///     language version to pick when the track's metadata doesn't say.
+    public func lookup(_ track: CleanedTrack, duration: Double?, script preferred: LyricsScript?,
+                       userLanguage: IndianLanguage? = nil) async throws -> LyricsLookupResult {
         let roundedDuration = duration.flatMap { $0.isFinite && $0 > 0 ? Int($0.rounded()) : nil }
         var sawPlain = false
         var sawInstrumental = false
@@ -105,7 +112,8 @@ public struct LRCLibClient: LyricsLookup {
             if record.hasPlain { sawPlain = true }
         }
         func consider(_ record: LRCLibRecord, exact: Bool) {
-            guard let score = Self.score(record, for: track, duration: exact ? nil : duration, preferred: preferred, exact: exact) else { return }
+            guard let score = Self.score(record, for: track, duration: exact ? nil : duration, preferred: preferred,
+                                         userLanguage: userLanguage, exact: exact) else { return }
             if best == nil || score < best!.score { best = (record, score) }
         }
         /// A candidate in the right script with matching names and duration.
@@ -132,7 +140,7 @@ public struct LRCLibClient: LyricsLookup {
             [URLQueryItem(name: "track_name", value: track.title), URLQueryItem(name: "artist_name", value: track.primaryArtist)],
             [URLQueryItem(name: "q", value: "\(track.title) \(track.primaryArtist)")],
         ]
-        let target = preferred?.isIndic == true ? preferred : track.language?.script
+        let target = preferred?.isIndic == true ? preferred : (track.language ?? userLanguage)?.script
         if let name = target?.searchName {
             searches.append([URLQueryItem(name: "q", value: "\(track.title) \(name)")])
             if let album = track.album {
@@ -161,7 +169,8 @@ public struct LRCLibClient: LyricsLookup {
     /// distance and script fit. Lyrics in a different Indian script than the
     /// language in the track's metadata are another language's version and
     /// are never used.
-    static func score(_ record: LRCLibRecord, for track: CleanedTrack, duration: Double?, preferred: LyricsScript?, exact: Bool) -> Double? {
+    static func score(_ record: LRCLibRecord, for track: CleanedTrack, duration: Double?, preferred: LyricsScript?,
+                      userLanguage: IndianLanguage? = nil, exact: Bool) -> Double? {
         guard record.hasSynced else { return nil }
         var penalty = 0.0
         if !exact {
@@ -175,23 +184,28 @@ public struct LRCLibClient: LyricsLookup {
                 return nil
             }
         }
-        guard let script = scriptPenalty(LyricsScript.dominant(in: record.syncedLyrics ?? ""), language: track.language, preferred: preferred) else {
+        guard let script = scriptPenalty(LyricsScript.dominant(in: record.syncedLyrics ?? ""), language: track.language,
+                                         preferred: preferred, userLanguage: userLanguage) else {
             return nil
         }
         return penalty + script
     }
 
     /// 0 = fits; nil = wrong language version.
-    static func scriptPenalty(_ script: LyricsScript?, language: IndianLanguage?, preferred: LyricsScript?) -> Double? {
+    static func scriptPenalty(_ script: LyricsScript?, language: IndianLanguage?, preferred: LyricsScript?,
+                              userLanguage: IndianLanguage? = nil) -> Double? {
         guard let script else { return 0 }
         if let language, script.isIndic, script != language.script { return nil }
+        // Not the listener's language (when the metadata doesn't name one): likely another version.
+        var penalty = 0.0
+        if language == nil, let userLanguage, script.isIndic, script != userLanguage.script { penalty += 8 }
         // With no explicit preference, the metadata's language script is the target.
-        guard let target = preferred ?? language?.script else { return 0 }
-        if script == target { return 0 }
+        guard let target = preferred ?? language?.script else { return penalty }
+        if script == target { return penalty }
         // Another Indian script than wanted: probably another language's version.
-        if script.isIndic && target.isIndic { return 8 }
+        if script.isIndic && target.isIndic { return penalty + 8 }
         // Romanized vs. native script: same song, just not the preferred writing.
-        return preferred == nil ? 0 : 4
+        return penalty + (preferred == nil ? 0 : 4)
     }
 
     /// Best synced record from a search result (used by tests and the lookup).

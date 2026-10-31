@@ -127,7 +127,7 @@ actor SleepRecorder {
         let counter = Counter()
         var result: LyricsLookupResult
         var error: LyricsLookupError?
-        func lookup(_ track: CleanedTrack, duration: Double?, script: LyricsScript?) async throws -> LyricsLookupResult {
+        func lookup(_ track: CleanedTrack, duration: Double?, preference: LyricsPreference) async throws -> LyricsLookupResult {
             await counter.increment(track)
             if let error { throw error }
             return result

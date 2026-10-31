@@ -27,11 +27,11 @@ public final class LyricsCache: @unchecked Sendable {
         return caches.appendingPathComponent("YTMGlow/lyrics", isDirectory: true)
     }
 
-    public static func key(for track: CleanedTrack, duration: Double?, script: LyricsScript? = nil) -> String {
+    public static func key(for track: CleanedTrack, duration: Double?, preference: LyricsPreference? = nil) -> String {
         let seconds = duration.map { String(Int($0.rounded())) } ?? "?"
         return [track.title, track.primaryArtist, track.album ?? ""]
             .map(TrackNameCleaner.normalizeKey)
-            .joined(separator: "|") + "|" + seconds + (script.map { "|" + $0.rawValue } ?? "")
+            .joined(separator: "|") + "|" + seconds + (preference.map { "|" + $0.cacheTag } ?? "")
     }
 
     public func read(_ key: String) -> LyricsLookupResult? {
@@ -82,17 +82,18 @@ public final class LyricsService: Sendable {
         self.cache = cache
     }
 
-    public func lyrics(title: String, artist: String, album: String?, duration: Double?, script: LyricsScript? = nil) async -> LyricsOutcome {
+    public func lyrics(title: String, artist: String, album: String?, duration: Double?,
+                       preference: LyricsPreference = .default) async -> LyricsOutcome {
         let track = TrackNameCleaner.clean(title: title, artist: artist, album: album)
         guard !track.title.isEmpty else { return .notFound }
-        let key = LyricsCache.key(for: track, duration: duration, script: script)
+        let key = LyricsCache.key(for: track, duration: duration, preference: preference)
 
         let result: LyricsLookupResult
         if let cached = cache?.read(key) {
             result = cached
         } else {
             do {
-                result = try await lookup.lookup(track, duration: duration, script: script)
+                result = try await lookup.lookup(track, duration: duration, preference: preference)
             } catch is CancellationError {
                 return .failed("cancelled")
             } catch {
@@ -104,7 +105,9 @@ public final class LyricsService: Sendable {
         switch result {
         case let .synced(lrc, _):
             guard let lyrics = Lyrics(lrc: lrc, songDuration: duration) else { return .plainOnly }
-            return .synced(lyrics)
+            // Timing is estimated on the original script, then each word is
+            // written in English letters.
+            return .synced(preference.writing == .english ? lyrics.romanized() : lyrics)
         case .plainOnly: return .plainOnly
         case .instrumental: return .instrumental
         case .notFound: return .notFound

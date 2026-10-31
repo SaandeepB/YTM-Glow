@@ -128,7 +128,7 @@ private struct NowPlayingCard: View {
         switch engine.lyricsStatus {
         case .idle: return "Lyrics —"
         case .loading: return "Finding lyrics…"
-        case .synced: return "Synced lyrics"
+        case let .synced(lyrics): return lyrics.transliteratedFrom == nil ? "Synced lyrics" : "Synced · English letters"
         case .plainOnly: return "No synced lyrics"
         case .instrumental: return "Instrumental"
         case .notFound: return "No lyrics found"
@@ -235,18 +235,31 @@ private struct LyricsSection: View {
             .font(.caption)
 
             HStack(spacing: 8) {
-                Text("Script").frame(width: 64, alignment: .leading)
-                Picker("Script", selection: $settings.lyricsScript) {
-                    Text("Any").tag("any")
-                    ForEach(LyricsScript.allCases, id: \.rawValue) { script in
-                        Text(script.label).tag(script.rawValue)
+                Text("Indian").frame(width: 64, alignment: .leading)
+                Picker("Indian lyrics", selection: $settings.lyricsWriting) {
+                    Text("English letters").tag(LyricsPreference.Writing.english)
+                    Text("Original script").tag(LyricsPreference.Writing.original)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
+            .font(.caption)
+            .help("English letters: Telugu, Hindi, Tamil and other Indian lyrics are shown romanized, using a romanized version when one exists and transliterating on your Mac otherwise. Original script: తెలుగు, हिन्दी, தமிழ்… when available.")
+
+            HStack(spacing: 8) {
+                Text("Language").frame(width: 64, alignment: .leading)
+                Picker("Language", selection: $settings.lyricsLanguage) {
+                    Text("Auto").tag("auto")
+                    ForEach(IndianLanguage.allCases, id: \.rawValue) { language in
+                        Text(language.displayName).tag(language.rawValue)
                     }
                 }
                 .labelsHidden()
+                .frame(width: 130)
                 Spacer(minLength: 0)
             }
             .font(.caption)
-            .help("Which writing to prefer when a song's lyrics exist in several, e.g. తెలుగు script or English letters. Also picks the right language version of film songs released in several languages.")
+            .help("Your language. Film songs are often released in several languages with the same title; this picks your language's version when YouTube Music doesn't say which it is.")
 
             SwitchRow(title: "Beat animation when there are no lyrics", isOn: $settings.beatWhenNoLyrics)
             SwitchRow(title: "Keep display awake while playing", isOn: $settings.keepDisplayAwake)

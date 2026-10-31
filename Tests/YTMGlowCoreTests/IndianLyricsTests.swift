@@ -174,8 +174,10 @@ import Testing
 
     @Test func cacheKeySeparatesScripts() {
         let cleaned = track(language: .telugu)
-        #expect(LyricsCache.key(for: cleaned, duration: 221) != LyricsCache.key(for: cleaned, duration: 221, script: .telugu))
-        #expect(LyricsCache.key(for: cleaned, duration: 221, script: .latin) != LyricsCache.key(for: cleaned, duration: 221, script: .telugu))
+        let english = LyricsPreference(writing: .english)
+        let telugu = LyricsPreference(writing: .original, language: .telugu)
+        #expect(LyricsCache.key(for: cleaned, duration: 221) != LyricsCache.key(for: cleaned, duration: 221, preference: english))
+        #expect(LyricsCache.key(for: cleaned, duration: 221, preference: english) != LyricsCache.key(for: cleaned, duration: 221, preference: telugu))
     }
 }
 
@@ -198,7 +200,8 @@ struct LiveIndianLyricsTests {
         ("Chuttamalle", "Shilpa Rao", "Devara Part 1 (Telugu)", 219.0, LyricsScript.telugu),
     ])
     func finds(title: String, artist: String, album: String, duration: Double, preferred: LyricsScript?) async throws {
-        let outcome = await service.lyrics(title: title, artist: artist, album: album, duration: duration, script: preferred)
+        let preference = preferred == .telugu ? LyricsPreference(writing: .original, language: .telugu) : LyricsPreference(writing: .original)
+        let outcome = await service.lyrics(title: title, artist: artist, album: album, duration: duration, preference: preference)
         if case let .failed(message) = outcome {
             withKnownIssue("LRCLIB unavailable: \(message)") { Issue.record("network") }
             return
@@ -208,5 +211,23 @@ struct LiveIndianLyricsTests {
         #expect(found != nil, "synced lyrics found")
         #expect(found != .tamil && found != .kannada && found != .malayalam && found != .devanagari, "not another language's version")
         if preferred == .telugu { #expect(found == .telugu) }
+    }
+
+    @Test(arguments: [
+        ("Srivalli", "Sid Sriram", "Pushpa - The Rise (Telugu)", 221.0),
+        ("Chuttamalle", "Shilpa Rao", "Devara Part 1 (Telugu)", 219.0),
+    ])
+    func englishLettersByDefault(title: String, artist: String, album: String, duration: Double) async throws {
+        let outcome = await service.lyrics(title: title, artist: artist, album: album, duration: duration,
+                                           preference: .init(writing: .english, language: .telugu))
+        if case let .failed(message) = outcome {
+            withKnownIssue("LRCLIB unavailable: \(message)") { Issue.record("network") }
+            return
+        }
+        guard case let .synced(lyrics) = outcome else { Issue.record("no lyrics: \(outcome)"); return }
+        let sample = lyrics.lines.prefix(2).map(\.text).joined(separator: " / ")
+        print("LIVE-EN \(title): \(sample)  [from \(lyrics.transliteratedFrom?.rawValue ?? "romanized source")]")
+        #expect(script(of: outcome) == .latin, "English letters only")
+        #expect(lyrics.transliteratedFrom == nil || lyrics.transliteratedFrom == .telugu, "transliterated from Telugu, not Tamil")
     }
 }
