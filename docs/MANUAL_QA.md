@@ -62,7 +62,10 @@ log stream --level info --predicate 'subsystem == "io.github.saandeepb.ytmglow"'
 
 - [ ] Play a popular Telugu film song (e.g. from RRR, Pushpa, Ala Vaikunthapurramuloo). Synced lyrics appear in Telugu script or romanized, never in Tamil/Hindi/Kannada script.
 - [ ] A song released in several languages (e.g. "Srivalli"): play the Telugu version. The lyrics are Telugu (or romanized), not the Tamil version. Repeat with the Tamil or Hindi version if you have it.
-- [ ] Popover → Lyrics → Script → తెలుగు: the current song re-looks-up and shows Telugu script when LRCLIB has it; English letters → romanized when available.
+- [ ] Default (Indian → English letters): Telugu songs show only English letters, e.g. "nuvvu nenu…", never Telugu script, whether LRCLIB had a romanized version or the app transliterated it (the popover then says "Synced · English letters").
+- [ ] The romanization reads naturally to you (long vowels as "aa"/"ee", "ch", "sh"); note any words that look off.
+- [ ] Switch to Original script: the current song switches to Telugu script within a second or two (a new lookup). Switch back: English letters again.
+- [ ] Language → Telugu: a multi-language film song with no language in YouTube Music's metadata picks the Telugu version.
 - [ ] Telugu script renders cleanly in Beam, Cascade, Capsule, the karaoke screen and the lock-screen card: vowel signs and stacked consonants aren't clipped, wrapped lines don't overlap the next line, and the Karaoke sweep moves through each word.
 - [ ] A song with no lyrics on LRCLIB (many regional or older tracks): the beat visualizer shows instead.
 

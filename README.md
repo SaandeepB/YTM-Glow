@@ -105,9 +105,9 @@ Click the menu bar icon:
   album-art vs custom colors (two color wells).
 - **Lyrics**: on/off, style (Beam / Cascade / Capsule), animation (Light up /
   Pop / Karaoke), album-art vs custom highlight color, size, a timing offset
-  (+ shows lyrics later), *Script* (Any / English letters / తెలుగు / हिन्दी /
-  தமிழ் / …), *Beat animation when there are no lyrics* (on by default), and
-  *Keep display awake while playing*.
+  (+ shows lyrics later), *Indian* (English letters / Original script),
+  *Language* (Auto / Telugu / Hindi / Tamil / …), *Beat animation when there
+  are no lyrics* (on by default), and *Keep display awake while playing*.
 - **Karaoke screen**: on/off and which display (*Automatic* = the first display
   without the menu bar; with only one display it stays off unless you pick
   it). It opens while music plays, stays through pauses up to 30 s, and closes
@@ -175,6 +175,19 @@ LRCLIB has synced lyrics for most popular Indian film songs. Each song may
 exist in the original script (తెలుగు, हिन्दी, தமிழ்…), romanized in English
 letters, or both. YTM Glow handles the extra wrinkles:
 
+- **English letters by default.** Popover → Lyrics → *Indian*: **English
+  letters** (default) or **Original script**.
+  - English letters uses a romanized version from LRCLIB when one exists.
+  - Otherwise it transliterates the Telugu, Hindi, Tamil, Kannada, Malayalam,
+    Bengali, Punjabi, Gujarati or Odia lyrics on your Mac, offline. The output
+    is everyday spelling, not scholarly notation: "challani gaali nadi meeda",
+    "mera dil tere liye", "nadhi mel kulir kaatru".
+  - Long vowels are doubled, Hindi's silent "a" is dropped ("mujhko", not
+    "mujhako"), and Tamil consonants are spelled as sung.
+  - Word timing is still worked out from the original script, so each English
+    word lights up in step.
+  - The popover shows "Synced · English letters" when lyrics were
+    transliterated.
 - **Right language version.** Pan-Indian films release the same song in
   several languages with the same title and singer, and LRCLIB entries are
   sometimes filed under the wrong album. In testing, every top result for the
@@ -183,11 +196,9 @@ letters, or both. YTM Glow handles the extra wrinkles:
   candidate's script and never shows another language's version. If needed it
   searches further ("Srivalli Telugu", "Srivalli Pushpa") to find the right
   one. If none exists, the beat visualizer shows instead of wrong lyrics.
-- **Lyrics script setting.** Popover → Lyrics → *Script*. Choose తెలుగు (or
-  हिन्दी, தமிழ், ಕನ್ನಡ, മലയാളം…) to prefer lyrics in that script, or *English
-  letters* for romanized lyrics. It falls back to the other writing if that's
-  all there is. Picking your language also helps when YouTube Music's metadata
-  doesn't name the language.
+- **Your language.** Popover → Lyrics → *Language* (Auto, Telugu, Hindi,
+  Tamil…). When YouTube Music doesn't say which language version is playing,
+  this picks yours over other languages' versions, in either writing mode.
 - **Film-song titles are cleaned up.** `(From "Movie")`, `(Telugu Version)`,
   "Lyrical", "Full Video Song" and `Song | Movie | Actor` are removed before
   searching.
@@ -200,7 +211,11 @@ and Chuttamalle all come back in Telugu script or romanized, never in another
 language's script. To re-run: `YTMGLOW_LIVE_LRCLIB=1 swift test --filter
 LiveIndianLyricsTests`.
 
-<img src="docs/images/telugu-karaoke-screen.png" width="760" alt="Karaoke screen with a Telugu line, the first three words swept in pink">
+<img src="docs/images/telugu-english-karaoke-screen.png" width="760" alt="Karaoke screen with a Telugu line in English letters: Challani gaali nadi meeda paata paadindi">
+
+With *Original script*:
+
+<img src="docs/images/telugu-karaoke-screen.png" width="560" alt="The same line in Telugu script">
 
 ### Word timing is estimated
 
