@@ -54,6 +54,8 @@ public struct Lyrics: Equatable, Sendable {
     public var lines: [LyricLine]
     /// True when word times were estimated from line times (plain LRC).
     public var wordTimingEstimated: Bool
+    /// Set when the lines were transliterated into English letters from this script.
+    public var transliteratedFrom: LyricsScript?
 
     public init(lines: [LyricLine], wordTimingEstimated: Bool) {
         self.lines = lines
